@@ -1,7 +1,7 @@
 import { supabase } from '@/src/integrations/supabase/client';
 import { Report, User, ReportStatus, ReportType } from '@/types';
 import { showSuccess, showError } from '@/src/utils/toast';
-import { uploadImage, deleteImage, getPublicImageUrl, BUCKET_REPORT_IMAGES } from './storageService';
+import { uploadImage, deleteImage, getPublicImageUrl, BUCKET_REPORT_IMAGES, BUCKET_COMMENT_IMAGES } from './storageService';
 
 class ReportService {
   /**
@@ -42,7 +42,7 @@ class ReportService {
         userId: comment.author_id,
         userName: `${comment.profiles?.first_name || ''} ${comment.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
         content: comment.content,
-        imageUrl: comment.image_url ? getPublicImageUrl('comment_images', comment.image_url) : undefined,
+        imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
         createdAt: comment.created_at,
       })) : [],
       supportCount: report.support_count,
@@ -88,7 +88,7 @@ class ReportService {
         userId: comment.author_id,
         userName: `${comment.profiles?.first_name || ''} ${comment.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
         content: comment.content,
-        imageUrl: comment.image_url ? getPublicImageUrl('comment_images', comment.image_url) : undefined,
+        imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
         createdAt: comment.created_at,
       })) : [],
       supportCount: data.support_count,
@@ -104,7 +104,7 @@ class ReportService {
   async getUserReports(userId: string): Promise<Report[]> {
     const { data, error } = await supabase
       .from('reports')
-      .select('*, profiles(first_name, last_name, avatar_url), comments(*)')
+      .select('*, profiles(first_name, last_name, avatar_url), comments(*, profiles(first_name, last_name, avatar_url))') // Incluir perfiles para comentarios
       .eq('author_id', userId)
       .order('created_at', { ascending: false });
 
@@ -134,9 +134,9 @@ class ReportService {
       comments: report.comments ? report.comments.map((comment: any) => ({
         id: comment.id,
         userId: comment.author_id,
-        userName: 'Usuario Anónimo',
+        userName: `${comment.profiles?.first_name || ''} ${comment.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo', // Usar datos del perfil
         content: comment.content,
-        imageUrl: comment.image_url ? getPublicImageUrl('comment_images', comment.image_url) : undefined,
+        imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
         createdAt: comment.created_at,
       })) : [],
       supportCount: report.support_count,
@@ -181,7 +181,7 @@ class ReportService {
         support_count: 0,
         supported_by: [],
       })
-      .select('*, profiles(first_name, last_name, avatar_url), comments(*)')
+      .select('*, profiles(first_name, last_name, avatar_url), comments(*, profiles(first_name, last_name, avatar_url))') // Incluir perfiles para comentarios
       ;
 
     if (error) {
@@ -214,9 +214,9 @@ class ReportService {
       comments: newReport.comments ? newReport.comments.map((comment: any) => ({
         id: comment.id,
         userId: comment.author_id,
-        userName: 'Usuario Anónimo',
+        userName: `${comment.profiles?.first_name || ''} ${comment.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo', // Usar datos del perfil
         content: comment.content,
-        imageUrl: comment.image_url ? getPublicImageUrl('comment_images', comment.image_url) : undefined,
+        imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
         createdAt: comment.created_at,
       })) : [],
       supportCount: newReport.support_count,
@@ -277,7 +277,7 @@ class ReportService {
       .from('reports')
       .update(updateData)
       .eq('id', id)
-      .select('*, profiles(first_name, last_name, avatar_url), comments(*)')
+      .select('*, profiles(first_name, last_name, avatar_url), comments(*, profiles(first_name, last_name, avatar_url))') // Incluir perfiles para comentarios
       ;
 
     if (error) {
@@ -310,9 +310,9 @@ class ReportService {
       comments: updatedReport.comments ? updatedReport.comments.map((comment: any) => ({
         id: comment.id,
         userId: comment.author_id,
-        userName: 'Usuario Anónimo',
+        userName: `${comment.profiles?.first_name || ''} ${comment.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo', // Usar datos del perfil
         content: comment.content,
-        imageUrl: comment.image_url ? getPublicImageUrl('comment_images', comment.image_url) : undefined,
+        imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
         createdAt: comment.created_at,
       })) : [],
       supportCount: updatedReport.support_count,
@@ -395,7 +395,7 @@ class ReportService {
         updated_at: new Date().toISOString(),
       })
       .eq('id', reportId)
-      .select('*, profiles(first_name, last_name, avatar_url), comments(*)')
+      .select('*, profiles(first_name, last_name, avatar_url), comments(*, profiles(first_name, last_name, avatar_url))') // Incluir perfiles para comentarios
       ;
 
     if (updateError) {
@@ -427,9 +427,9 @@ class ReportService {
       comments: updatedReport.comments ? updatedReport.comments.map((comment: any) => ({
         id: comment.id,
         userId: comment.author_id,
-        userName: 'Usuario Anónimo',
+        userName: `${comment.profiles?.first_name || ''} ${comment.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo', // Usar datos del perfil
         content: comment.content,
-        imageUrl: comment.image_url ? getPublicImageUrl('comment_images', comment.image_url) : undefined,
+        imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
         createdAt: comment.created_at,
       })) : [],
       supportCount: updatedReport.support_count,

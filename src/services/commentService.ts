@@ -82,7 +82,7 @@ class CommentService {
       comment: {
         id: comment.id,
         userId: comment.author_id,
-        userName: `${comment.profiles?.first_name || ''} ${comment.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
+        userName: `${comment.profiles?.first_name || ''} ${comment.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo', // Usar datos del perfil
         content: comment.content,
         imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
         createdAt: comment.created_at,
