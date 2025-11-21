@@ -31,10 +31,8 @@ const uploadImage = async (file: File, userId: string, bucket: string): Promise<
 };
 
 // Helper to delete image
-const deleteImage = async (imageUrl: string, bucket: string): Promise<void> => {
-  const path = imageUrl.split(`${bucket}/`)[1];
-  if (!path) return;
-
+const deleteImage = async (path: string, bucket: string): Promise<void> => {
+  // The path already comes in the format 'userId/timestamp.ext'
   const { error } = await supabase.storage.from(bucket).remove([path]);
   if (error) {
     console.error('Error deleting image:', error);
@@ -201,7 +199,6 @@ class SupabaseBackend {
         supported_by: [],
       })
       .select('*, profiles(first_name, last_name, avatar_url), comments(*)')
-      // Removed .single() here
       ;
 
     if (error) {
@@ -250,7 +247,11 @@ class SupabaseBackend {
     if (file) {
       // If a new file is provided, delete old images and upload new one
       if (existingImageUrls && existingImageUrls.length > 0) {
-        await Promise.all(existingImageUrls.map(url => deleteImage(url, BUCKET_REPORT_IMAGES)));
+        // existingImageUrls contains public URLs, need to extract paths
+        await Promise.all(existingImageUrls.map(url => {
+          const path = url.split(`${BUCKET_REPORT_IMAGES}/`)[1];
+          return deleteImage(path, BUCKET_REPORT_IMAGES);
+        }));
       }
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -289,7 +290,6 @@ class SupabaseBackend {
       .update(updateData)
       .eq('id', id)
       .select('*, profiles(first_name, last_name, avatar_url), comments(*)')
-      // Removed .single() here
       ;
 
     if (error) {
@@ -347,7 +347,7 @@ class SupabaseBackend {
     }
 
     if (reportToDelete && reportToDelete.image_urls && reportToDelete.image_urls.length > 0) {
-      // image_urls contains paths, not public URLs, so we need to extract the path correctly
+      // image_urls contains paths, not public URLs
       await Promise.all(reportToDelete.image_urls.map((path: string) => deleteImage(path, BUCKET_REPORT_IMAGES)));
     }
 
@@ -509,7 +509,6 @@ class SupabaseBackend {
       })
       .eq('id', reportId)
       .select('*, profiles(first_name, last_name, avatar_url), comments(*)')
-      // Removed .single() here
       ;
 
     if (updateError) {
