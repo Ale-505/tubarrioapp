@@ -9,9 +9,10 @@ import CreateReport from '@/pages/CreateReport';
 import ReportDetail from '@/pages/ReportDetail';
 import MyContributions from '@/pages/MyContributions';
 import { SessionContextProvider, useSession } from '@/src/components/SessionContextProvider';
+import ToastProvider from '@/src/components/ToastProvider'; // Import ToastProvider
 
 const AppContent: React.FC = () => {
-  const { user, isLoading } = useSession(); // Removed setAppUser as it's not used directly here
+  const { user, isLoading } = useSession();
 
   if (isLoading) return <div className="flex h-screen items-center justify-center">Cargando...</div>;
 
@@ -40,6 +41,7 @@ const App: React.FC = () => {
   return (
     <Router>
       <SessionContextProvider>
+        <ToastProvider /> {/* Add ToastProvider here */}
         <AppContent />
       </SessionContextProvider>
     </Router>
