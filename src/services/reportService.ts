@@ -11,7 +11,7 @@ class ReportService {
   async getReports(): Promise<Report[]> {
     const { data, error } = await supabase
       .from('reports')
-      .select('*, profiles(first_name, last_name, avatar_url), comments(*, profiles(first_name, last_name, avatar_url))')
+      .select('*') // Simplificado para diagnosticar
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -35,16 +35,9 @@ class ReportService {
       createdAt: report.created_at,
       updatedAt: report.updated_at,
       authorId: report.author_id,
-      authorName: `${report.profiles?.first_name || ''} ${report.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
+      authorName: 'Usuario Anónimo', // Valor predeterminado temporal
       images: report.image_urls ? report.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
-      comments: report.comments ? report.comments.map((comment: any) => ({
-        id: comment.id,
-        userId: comment.author_id,
-        userName: `${comment.profiles?.first_name || ''} ${comment.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
-        content: comment.content,
-        imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
-        createdAt: comment.created_at,
-      })) : [],
+      comments: [], // Vacío temporalmente
       supportCount: report.support_count,
       supportedBy: report.supported_by || [],
     }));
