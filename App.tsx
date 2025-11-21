@@ -1,14 +1,14 @@
 import React from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Navbar from './src/components/Navbar';
-import Landing from './src/pages/Landing';
-import Login from './src/pages/Login';
-import Register from './src/pages/Register';
-import Dashboard from './src/pages/Dashboard';
-import CreateReport from './src/pages/CreateReport';
-import ReportDetail from './src/pages/ReportDetail';
-import MyContributions from './src/pages/MyContributions';
-import { SessionContextProvider, useSession } from './src/components/SessionContextProvider';
+import Navbar from '@/src/components/Navbar';
+import Landing from '@/src/pages/Landing';
+import Login from '@/src/pages/Login';
+import Register from '@/src/pages/Register';
+import Dashboard from '@/src/pages/Dashboard';
+import CreateReport from '@/src/pages/CreateReport';
+import ReportDetail from '@/src/pages/ReportDetail';
+import MyContributions from '@/src/pages/MyContributions';
+import { SessionContextProvider, useSession } from '@/src/components/SessionContextProvider';
 
 const AppContent: React.FC = () => {
   const { user, isLoading, setAppUser } = useSession();
@@ -17,7 +17,7 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
-      <Navbar user={user} setUser={setAppUser} />
+      <Navbar />
       <Routes>
         <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Landing />} />
         <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
