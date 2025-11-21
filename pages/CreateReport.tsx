@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Camera, MapPin, AlertCircle, Save } from 'lucide-react';
-import { supabaseService } from '@/src/services/supabaseService'; // Ruta corregida
+import { reportService } from '@/src/services'; // Importar desde el índice de servicios
 import { BARRIOS, REPORT_TYPES } from '@/constants';
 import { ReportType } from '@/types';
 import { useSession } from '@/src/components/SessionContextProvider';
@@ -31,7 +31,7 @@ const CreateReport: React.FC = () => {
     if (isEditMode && id) {
       const fetchReport = async () => {
         try {
-          const report = await supabaseService.getReportById(id);
+          const report = await reportService.getReportById(id);
           if (report && currentUser && report.authorId === currentUser.id) {
              setFormData({
                title: report.title,
@@ -79,7 +79,7 @@ const CreateReport: React.FC = () => {
 
     try {
       if (isEditMode && id) {
-        const updatedReport = await supabaseService.updateReport(id, {
+        const updatedReport = await reportService.updateReport(id, {
           ...formData,
           type: formData.type as ReportType
         }, file, existingImageUrls);
@@ -87,7 +87,7 @@ const CreateReport: React.FC = () => {
           navigate('/mis-aportes');
         }
       } else {
-        const newReport = await supabaseService.createReport({
+        const newReport = await reportService.createReport({
           ...formData,
           type: formData.type as ReportType
         }, file, currentUser);

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../integrations/supabase/client';
 import { User as AppUser } from '../types';
+import { getPublicImageUrl, BUCKET_AVATARS } from '@/src/services/storageService'; // Importar desde storageService
 
 interface SessionContextType {
   session: Session | null;
@@ -19,12 +20,6 @@ export const useSession = () => {
     throw new Error('useSession must be used within a SessionContextProvider');
   }
   return context;
-};
-
-// Helper to get public URL for an image from the 'avatars' bucket
-const getPublicAvatarUrl = (path: string): string => {
-  const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-  return data.publicUrl;
 };
 
 export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -57,7 +52,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
             });
           } else if (profile) {
             const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
-            const avatarUrl = profile.avatar_url ? getPublicAvatarUrl(profile.avatar_url) : `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || currentSession.user.email || 'Usuario')}&background=2563eb&color=fff`;
+            const avatarUrl = profile.avatar_url ? getPublicImageUrl(BUCKET_AVATARS, profile.avatar_url) : `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || currentSession.user.email || 'Usuario')}&background=2563eb&color=fff`;
             setAppUser({
               id: currentSession.user.id,
               email: currentSession.user.email || '',

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabaseService } from '@/src/services/supabaseService'; // Ruta corregida
+import { reportService, commentService } from '@/src/services'; // Importar desde el índice de servicios
 import { Report, ReportStatus } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import { MapPin, Calendar, User, ArrowLeft, Send, ThumbsUp, Image as ImageIcon, X, ChevronDown } from 'lucide-react';
@@ -25,7 +25,7 @@ const ReportDetail: React.FC = () => {
       if (!id) return;
       setLoading(true);
       try {
-        const data = await supabaseService.getReportById(id);
+        const data = await reportService.getReportById(id);
         if (data) setReport(data);
         else {
           showError('Reporte no encontrado.');
@@ -49,7 +49,7 @@ const ReportDetail: React.FC = () => {
     }
     setSubmitting(true);
     try {
-      const addedComment = await supabaseService.addComment(report.id, newComment, commentFile, currentUser);
+      const addedComment = await commentService.addComment(report.id, newComment, commentFile, currentUser);
       if (addedComment) {
         setReport(prevReport => prevReport ? {
           ...prevReport,
@@ -72,7 +72,7 @@ const ReportDetail: React.FC = () => {
         return;
       }
       try {
-          const updatedReport = await supabaseService.toggleSupport(report.id, currentUser.id);
+          const updatedReport = await reportService.toggleSupport(report.id, currentUser.id);
           if (updatedReport) {
             setReport(updatedReport);
           }
@@ -89,7 +89,7 @@ const ReportDetail: React.FC = () => {
       }
       const newStatus = e.target.value as ReportStatus;
       try {
-          const updatedReport = await supabaseService.updateReport(report.id, { status: newStatus });
+          const updatedReport = await reportService.updateReport(report.id, { status: newStatus });
           if (updatedReport) {
             setReport({ ...report, status: newStatus });
             showSuccess('Estado del reporte actualizado.');

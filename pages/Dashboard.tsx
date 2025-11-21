@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Search, Filter } from 'lucide-react';
-import { supabaseService } from '@/src/services/supabaseService'; // Ruta corregida
+import { reportService } from '@/src/services'; // Importar desde el índice de servicios
 import { Report, FilterState } from '../types';
 import { BARRIOS, REPORT_TYPES } from '../constants';
 import ReportCard from '../components/ReportCard';
@@ -19,7 +19,7 @@ const Dashboard: React.FC = () => {
     const fetchReports = async () => {
       setLoading(true);
       try {
-        const data = await supabaseService.getReports();
+        const data = await reportService.getReports();
         setReports(data);
       } catch (error) {
         console.error(error);

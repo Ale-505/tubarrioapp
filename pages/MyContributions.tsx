@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabaseService } from '@/src/services/supabaseService'; // Ruta corregida
+import { reportService, commentService } from '@/src/services'; // Importar desde el índice de servicios
 import { Report, Comment } from '@/types';
 import { User as UserType } from '@/types';
 import { Edit2, Trash2, MessageSquare, FileText, ExternalLink } from 'lucide-react';
@@ -21,10 +21,10 @@ const MyContributions: React.FC<MyContributionsProps> = ({ user }) => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const myReports = await supabaseService.getUserReports(user.id);
+      const myReports = await reportService.getUserReports(user.id);
       setReports(myReports);
       
-      const myComments = await supabaseService.getUserComments(user.id);
+      const myComments = await commentService.getUserComments(user.id);
       setComments(myComments);
     } catch (error) {
       console.error(error);
@@ -41,7 +41,7 @@ const MyContributions: React.FC<MyContributionsProps> = ({ user }) => {
   const handleDeleteReport = async (id: string) => {
       if(window.confirm("¿Estás seguro de querer eliminar este reporte? Esta acción no se puede deshacer.")) {
           try {
-            await supabaseService.deleteReport(id);
+            await reportService.deleteReport(id);
             setReports(prevReports => prevReports.filter(r => r.id !== id));
             showSuccess('Reporte eliminado.');
           } catch (e) {
@@ -54,7 +54,7 @@ const MyContributions: React.FC<MyContributionsProps> = ({ user }) => {
   const handleDeleteComment = async (reportId: string, commentId: string) => {
       if(window.confirm("¿Eliminar este comentario?")) {
           try {
-            await supabaseService.deleteComment(reportId, commentId);
+            await commentService.deleteComment(reportId, commentId);
             setComments(prevComments => prevComments.filter(c => c.comment.id !== commentId));
             showSuccess('Comentario eliminado.');
           } catch (e) {
