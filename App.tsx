@@ -1,14 +1,14 @@
 import React from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import Landing from './pages/Landing';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import CreateReport from './pages/CreateReport';
-import ReportDetail from './pages/ReportDetail';
-import MyContributions from './pages/MyContributions';
-import { SessionContextProvider, useSession } from './components/SessionContextProvider';
+import Navbar from './src/components/Navbar';
+import Landing from './src/pages/Landing';
+import Login from './src/pages/Login';
+import Register from './src/pages/Register';
+import Dashboard from './src/pages/Dashboard';
+import CreateReport from './src/pages/CreateReport';
+import ReportDetail from './src/pages/ReportDetail';
+import MyContributions from './src/pages/MyContributions';
+import { SessionContextProvider, useSession } from './src/components/SessionContextProvider';
 
 const AppContent: React.FC = () => {
   const { user, isLoading, setAppUser } = useSession();
