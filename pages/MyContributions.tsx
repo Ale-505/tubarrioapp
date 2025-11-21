@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabaseService } from '@/services/supabaseService'; // Usar el nuevo servicio
+import { supabaseService } from '@/src/services/supabaseService'; // Ruta corregida
 import { Report, Comment } from '@/types';
 import { User as UserType } from '@/types';
 import { Edit2, Trash2, MessageSquare, FileText, ExternalLink } from 'lucide-react';

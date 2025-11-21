@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Search, Filter } from 'lucide-react';
-import { supabaseService } from '../services/supabaseService'; // Usar el nuevo servicio
+import { supabaseService } from '@/src/services/supabaseService'; // Ruta corregida
 import { Report, FilterState } from '../types';
 import { BARRIOS, REPORT_TYPES } from '../constants';
 import ReportCard from '../components/ReportCard';

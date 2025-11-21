@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabaseService } from '@/services/supabaseService'; // Usar el nuevo servicio
+import { supabaseService } from '@/src/services/supabaseService'; // Ruta corregida
 import { Report, ReportStatus } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import { MapPin, Calendar, User, ArrowLeft, Send, ThumbsUp, Image as ImageIcon, X, ChevronDown } from 'lucide-react';

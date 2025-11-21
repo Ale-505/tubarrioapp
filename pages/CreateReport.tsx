@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Camera, MapPin, AlertCircle, Save } from 'lucide-react';
-import { supabaseService } from '@/services/supabaseService'; // Usar el nuevo servicio
+import { supabaseService } from '@/src/services/supabaseService'; // Ruta corregida
 import { BARRIOS, REPORT_TYPES } from '@/constants';
 import { ReportType } from '@/types';
 import { useSession } from '@/src/components/SessionContextProvider';
