@@ -1,0 +1,8 @@
+{
+  "name": "TuBarrio",
+  "description": "Plataforma de reporte de problemas sociales para la participación ciudadana.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
