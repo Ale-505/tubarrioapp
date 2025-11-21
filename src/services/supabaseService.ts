@@ -55,6 +55,11 @@ class SupabaseBackend {
       return [];
     }
 
+    // Ensure data is an array before mapping
+    if (!data) {
+      return [];
+    }
+
     return data.map(report => ({
       id: report.id,
       title: report.title,
@@ -68,14 +73,14 @@ class SupabaseBackend {
       authorId: report.author_id,
       authorName: `${report.profiles?.first_name || ''} ${report.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
       images: report.image_urls ? report.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
-      comments: report.comments.map((comment: any) => ({
+      comments: report.comments ? report.comments.map((comment: any) => ({ // Add null check for report.comments
         id: comment.id,
         userId: comment.author_id,
         userName: `${comment.profiles?.first_name || ''} ${comment.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
         content: comment.content,
         imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
         createdAt: comment.created_at,
-      })),
+      })) : [], // Default to empty array if comments is null
       supportCount: report.support_count,
       supportedBy: report.supported_by || [],
     }));
@@ -109,14 +114,14 @@ class SupabaseBackend {
       authorId: data.author_id,
       authorName: `${data.profiles?.first_name || ''} ${data.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
       images: data.image_urls ? data.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
-      comments: data.comments.map((comment: any) => ({
+      comments: data.comments ? data.comments.map((comment: any) => ({ // Add null check for data.comments
         id: comment.id,
         userId: comment.author_id,
         userName: `${comment.profiles?.first_name || ''} ${comment.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
         content: comment.content,
         imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
         createdAt: comment.created_at,
-      })),
+      })) : [],
       supportCount: data.support_count,
       supportedBy: data.supported_by || [],
     };
@@ -135,6 +140,10 @@ class SupabaseBackend {
       return [];
     }
 
+    if (!data) {
+      return [];
+    }
+
     return data.map(report => ({
       id: report.id,
       title: report.title,
@@ -148,14 +157,14 @@ class SupabaseBackend {
       authorId: report.author_id,
       authorName: `${report.profiles?.first_name || ''} ${report.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
       images: report.image_urls ? report.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
-      comments: report.comments.map((comment: any) => ({
+      comments: report.comments ? report.comments.map((comment: any) => ({
         id: comment.id,
         userId: comment.author_id,
         userName: 'Usuario Anónimo', // Will be fetched in ReportDetail if needed
         content: comment.content,
         imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
         createdAt: comment.created_at,
-      })),
+      })) : [],
       supportCount: report.support_count,
       supportedBy: report.supported_by || [],
     }));
@@ -177,7 +186,7 @@ class SupabaseBackend {
       }
     }
 
-    const { data: newReport, error } = await supabase
+    const { data: newReports, error } = await supabase
       .from('reports')
       .insert({
         author_id: currentUser.id,
@@ -192,13 +201,21 @@ class SupabaseBackend {
         supported_by: [],
       })
       .select('*, profiles(first_name, last_name, avatar_url), comments(*)')
-      .single();
+      // Removed .single() here
+      ;
 
     if (error) {
       console.error('Error creating report:', error);
       showError('Error al crear el reporte.');
       return null;
     }
+
+    if (!newReports || newReports.length === 0) {
+      showError('Error al crear el reporte: No se devolvieron datos.');
+      return null;
+    }
+
+    const newReport = newReports[0]; // Get the first (and likely only) inserted report
 
     showSuccess('Reporte creado exitosamente.');
     return {
@@ -214,7 +231,14 @@ class SupabaseBackend {
       authorId: newReport.author_id,
       authorName: `${newReport.profiles?.first_name || ''} ${newReport.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
       images: newReport.image_urls ? newReport.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
-      comments: [],
+      comments: newReport.comments ? newReport.comments.map((comment: any) => ({
+        id: comment.id,
+        userId: comment.author_id,
+        userName: 'Usuario Anónimo',
+        content: comment.content,
+        imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
+        createdAt: comment.created_at,
+      })) : [],
       supportCount: newReport.support_count,
       supportedBy: newReport.supported_by || [],
     };
@@ -260,18 +284,26 @@ class SupabaseBackend {
       updateData.image_urls = imageUrlsToUpdate;
     }
 
-    const { data: updatedReport, error } = await supabase
+    const { data: updatedReports, error } = await supabase
       .from('reports')
       .update(updateData)
       .eq('id', id)
       .select('*, profiles(first_name, last_name, avatar_url), comments(*)')
-      .single();
+      // Removed .single() here
+      ;
 
     if (error) {
       console.error('Error updating report:', error);
       showError('Error al actualizar el reporte.');
       return null;
     }
+
+    if (!updatedReports || updatedReports.length === 0) {
+      showError('Error al actualizar el reporte: No se devolvieron datos.');
+      return null;
+    }
+
+    const updatedReport = updatedReports[0]; // Get the first (and likely only) updated report
 
     showSuccess('Reporte actualizado exitosamente.');
     return {
@@ -287,14 +319,14 @@ class SupabaseBackend {
       authorId: updatedReport.author_id,
       authorName: `${updatedReport.profiles?.first_name || ''} ${updatedReport.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
       images: updatedReport.image_urls ? updatedReport.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
-      comments: updatedReport.comments.map((comment: any) => ({
+      comments: updatedReport.comments ? updatedReport.comments.map((comment: any) => ({
         id: comment.id,
         userId: comment.author_id,
         userName: 'Usuario Anónimo',
         content: comment.content,
         imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
         createdAt: comment.created_at,
-      })),
+      })) : [],
       supportCount: updatedReport.support_count,
       supportedBy: updatedReport.supported_by || [],
     };
@@ -315,7 +347,8 @@ class SupabaseBackend {
     }
 
     if (reportToDelete && reportToDelete.image_urls && reportToDelete.image_urls.length > 0) {
-      await Promise.all(reportToDelete.image_urls.map((path: string) => deleteImage(getPublicImageUrl(BUCKET_REPORT_IMAGES, path), BUCKET_REPORT_IMAGES)));
+      // image_urls contains paths, not public URLs, so we need to extract the path correctly
+      await Promise.all(reportToDelete.image_urls.map((path: string) => deleteImage(path, BUCKET_REPORT_IMAGES)));
     }
 
     const { error } = await supabase
@@ -348,7 +381,7 @@ class SupabaseBackend {
       }
     }
 
-    const { data: newComment, error } = await supabase
+    const { data: newComments, error } = await supabase
       .from('comments')
       .insert({
         report_id: reportId,
@@ -357,7 +390,7 @@ class SupabaseBackend {
         image_url: imageUrl,
       })
       .select('*, profiles(first_name, last_name, avatar_url)')
-      .single();
+      .single(); // Keep .single() here as comments are expected to be single inserts
 
     if (error) {
       console.error('Error adding comment:', error);
@@ -367,12 +400,12 @@ class SupabaseBackend {
 
     showSuccess('Comentario añadido exitosamente.');
     return {
-      id: newComment.id,
-      userId: newComment.author_id,
-      userName: `${newComment.profiles?.first_name || ''} ${newComment.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
-      content: newComment.content,
-      imageUrl: newComment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, newComment.image_url) : undefined,
-      createdAt: newComment.created_at,
+      id: newComments.id,
+      userId: newComments.author_id,
+      userName: `${newComments.profiles?.first_name || ''} ${newComments.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
+      content: newComments.content,
+      imageUrl: newComments.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, newComments.image_url) : undefined,
+      createdAt: newComments.created_at,
     };
   }
 
@@ -386,6 +419,10 @@ class SupabaseBackend {
     if (error) {
       console.error('Error fetching user comments:', error);
       showError('Error al cargar tus comentarios.');
+      return [];
+    }
+
+    if (!data) {
       return [];
     }
 
@@ -418,7 +455,8 @@ class SupabaseBackend {
     }
 
     if (commentToDelete && commentToDelete.image_url) {
-      await deleteImage(getPublicImageUrl(BUCKET_COMMENT_IMAGES, commentToDelete.image_url), BUCKET_COMMENT_IMAGES);
+      // image_url contains path, not public URL
+      await deleteImage(commentToDelete.image_url, BUCKET_COMMENT_IMAGES);
     }
 
     const { error } = await supabase
@@ -462,7 +500,7 @@ class SupabaseBackend {
       showSuccess('Reporte apoyado.');
     }
 
-    const { data: updatedReport, error: updateError } = await supabase
+    const { data: updatedReports, error: updateError } = await supabase
       .from('reports')
       .update({
         supported_by: newSupportedBy,
@@ -471,13 +509,21 @@ class SupabaseBackend {
       })
       .eq('id', reportId)
       .select('*, profiles(first_name, last_name, avatar_url), comments(*)')
-      .single();
+      // Removed .single() here
+      ;
 
     if (updateError) {
       console.error('Error updating support:', updateError);
       showError('Error al actualizar el apoyo.');
       return null;
     }
+
+    if (!updatedReports || updatedReports.length === 0) {
+      showError('Error al actualizar el apoyo: No se devolvieron datos.');
+      return null;
+    }
+
+    const updatedReport = updatedReports[0];
 
     return {
       id: updatedReport.id,
@@ -492,14 +538,14 @@ class SupabaseBackend {
       authorId: updatedReport.author_id,
       authorName: `${updatedReport.profiles?.first_name || ''} ${updatedReport.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
       images: updatedReport.image_urls ? updatedReport.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
-      comments: updatedReport.comments.map((comment: any) => ({
+      comments: updatedReport.comments ? updatedReport.comments.map((comment: any) => ({
         id: comment.id,
         userId: comment.author_id,
         userName: 'Usuario Anónimo',
         content: comment.content,
         imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
         createdAt: comment.created_at,
-      })),
+      })) : [],
       supportCount: updatedReport.support_count,
       supportedBy: updatedReport.supported_by || [],
     };
