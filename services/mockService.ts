@@ -66,11 +66,7 @@ const INITIAL_REPORTS: Report[] = [
 // In-memory store simulating database
 class MockBackend {
   private reports: Report[] = INITIAL_REPORTS;
-  // Auth methods removed, now handled by Supabase
-  // private users: User[] = [];
-  // private currentUser: User | null = null;
 
-  // Reports
   async getReports(): Promise<Report[]> {
     await new Promise(resolve => setTimeout(resolve, 500));
     return [...this.reports].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -86,12 +82,11 @@ class MockBackend {
     return this.reports.filter(r => r.authorId === userId);
   }
 
-  async createReport(data: Partial<Report>, file?: File): Promise<Report> {
+  async createReport(data: Partial<Report>, file?: File, currentUser?: User): Promise<Report> {
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // This mock service will need to be updated to get the current user from Supabase context
-    // For now, it will use a placeholder or assume user is available from a different source
-    const mockCurrentUser = { id: 'mock-user-id', name: 'Mock User' }; // Placeholder
+    const authorId = currentUser?.id || 'mock-user-id';
+    const authorName = currentUser?.name || 'Mock User';
 
     const newReport: Report = {
       id: `rep-${Date.now()}`,
@@ -103,8 +98,8 @@ class MockBackend {
       location: data.location || '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      authorId: mockCurrentUser.id, // Use mock user
-      authorName: mockCurrentUser.name, // Use mock user
+      authorId: authorId,
+      authorName: authorName,
       images: file ? [URL.createObjectURL(file)] : (data.images || []),
       comments: [],
       supportCount: 0,
@@ -141,17 +136,18 @@ class MockBackend {
   }
 
   // Comments
-  async addComment(reportId: string, text: string, file?: File): Promise<Comment> {
+  async addComment(reportId: string, text: string, file?: File, currentUser?: User): Promise<Comment> {
     await new Promise(resolve => setTimeout(resolve, 600));
     const reportIndex = this.reports.findIndex(r => r.id === reportId);
     if (reportIndex === -1) throw new Error("Report not found");
 
-    const mockCurrentUser = { id: 'mock-user-id', name: 'Mock User' }; // Placeholder
+    const userId = currentUser?.id || 'mock-user-id';
+    const userName = currentUser?.name || 'Mock User';
 
     const newComment: Comment = {
       id: `c-${Date.now()}`,
-      userId: mockCurrentUser.id, // Use mock user
-      userName: mockCurrentUser.name, // Use mock user
+      userId: userId,
+      userName: userName,
       content: text,
       imageUrl: file ? URL.createObjectURL(file) : undefined,
       createdAt: new Date().toISOString()

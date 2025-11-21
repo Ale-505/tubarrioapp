@@ -1,8 +1,8 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { MapPin, LogOut, Menu, X, PlusCircle, LayoutDashboard, User as UserIcon } from 'lucide-react';
-import { useSession } from '../components/SessionContextProvider';
-import { supabase } from '../integrations/supabase/client';
+import { useSession } from '@/src/components/SessionContextProvider';
+import { supabase } from '@/src/integrations/supabase/client';
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();

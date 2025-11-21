@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../integrations/supabase/client';
-import { useSession } from '../components/SessionContextProvider';
+import { supabase } from '@/src/integrations/supabase/client';
+import { useSession } from '@/src/components/SessionContextProvider';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();

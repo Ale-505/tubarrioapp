@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Camera, MapPin, AlertCircle, Save } from 'lucide-react';
-import { api } from '../services/mockService';
-import { BARRIOS, REPORT_TYPES } from '../constants';
-import { ReportType } from '../types';
+import { api } from '@/services/mockService';
+import { BARRIOS, REPORT_TYPES } from '@/constants';
+import { ReportType } from '@/types';
 
 const CreateReport: React.FC = () => {
   const navigate = useNavigate();

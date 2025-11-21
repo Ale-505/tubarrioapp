@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api } from '../services/mockService';
-import { Report, ReportStatus } from '../types';
-import StatusBadge from '../components/StatusBadge';
+import { api } from '@/services/mockService';
+import { Report, ReportStatus } from '@/types';
+import StatusBadge from '@/components/StatusBadge';
 import { MapPin, Calendar, User, ArrowLeft, Send, ThumbsUp, Image as ImageIcon, X, ChevronDown } from 'lucide-react';
+import { useSession } from '@/src/components/SessionContextProvider'; // Import useSession
 
 const ReportDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,7 +15,7 @@ const ReportDetail: React.FC = () => {
   const [commentFile, setCommentFile] = useState<File | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
   
-  const currentUser = api.getUser();
+  const { user: currentUser } = useSession(); // Get current user from session
   const isAuthor = currentUser && report && currentUser.id === report.authorId;
   const isSupported = report?.supportedBy?.includes(currentUser?.id || '');
 
@@ -36,10 +37,10 @@ const ReportDetail: React.FC = () => {
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim() || !report) return;
+    if (!newComment.trim() || !report || !currentUser) return; // Ensure currentUser exists
     setSubmitting(true);
     try {
-      const comment = await api.addComment(report.id, newComment, commentFile);
+      const comment = await api.addComment(report.id, newComment, commentFile, currentUser); // Pass currentUser
       setReport({
         ...report,
         comments: [...report.comments, comment]

@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api } from '../services/mockService';
-import { Report, Comment } from '../types';
-import { User as UserType } from '../types';
+import { api } from '@/services/mockService';
+import { Report, Comment } from '@/types';
+import { User as UserType } from '@/types';
 import { Edit2, Trash2, MessageSquare, FileText, ExternalLink } from 'lucide-react';
-import StatusBadge from '../components/StatusBadge';
+import StatusBadge from '@/components/StatusBadge';
 
 interface MyContributionsProps {
     user: UserType;
