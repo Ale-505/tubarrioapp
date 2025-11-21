@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../integrations/supabase/client';
 import { User as AppUser } from '../types';
-import { getPublicImageUrl, BUCKET_AVATARS } from '@/src/services/storageService'; // Importar desde storageService
+import { getPublicImageUrl, BUCKET_AVATARS } from '@/src/services'; // Importar desde el índice de servicios
 
 interface SessionContextType {
   session: Session | null;
