@@ -1,17 +1,98 @@
 import { supabase } from '@/src/integrations/supabase/client';
-import { Report, User, ReportStatus, ReportType } from '@/types';
+import { Report, User, ReportStatus, ReportType, Comment } from '@/types';
 import { showSuccess, showError } from '@/src/utils/toast';
-import { uploadImage, deleteImage, getPublicImageUrl, BUCKET_REPORT_IMAGES, BUCKET_COMMENT_IMAGES } from './storageService';
+import { uploadImage, deleteImage, getPublicImageUrl, BUCKET_REPORT_IMAGES, BUCKET_COMMENT_IMAGES, BUCKET_AVATARS } from './storageService';
 
 class ReportService {
+
+  // Función auxiliar para obtener un perfil de usuario
+  private async getProfile(userId: string): Promise<{ first_name: string; last_name: string; avatar_url: string | null } | null> {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('first_name, last_name, avatar_url')
+      .eq('id', userId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
+      console.error('Error fetching profile:', error);
+      return null;
+    }
+    return data;
+  }
+
+  // Función auxiliar para obtener comentarios de un reporte
+  private async getReportComments(reportId: string): Promise<Comment[]> {
+    const { data, error } = await supabase
+      .from('comments')
+      .select('*, profiles(first_name, last_name, avatar_url)')
+      .eq('report_id', reportId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching comments for report:', error);
+      return [];
+    }
+
+    return data.map((comment: any) => ({
+      id: comment.id,
+      userId: comment.author_id,
+      userName: `${comment.profiles?.first_name || ''} ${comment.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
+      content: comment.content,
+      imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
+      createdAt: comment.created_at,
+    }));
+  }
+
+  /**
+   * Obtiene un reporte por su ID y lo hidrata con información de autor y comentarios.
+   * @param id El ID del reporte.
+   * @returns El reporte encontrado o undefined.
+   */
+  async getReportById(id: string): Promise<Report | undefined> {
+    const { data: reportData, error: reportError } = await supabase
+      .from('reports')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (reportError) {
+      console.error('Error fetching report by ID:', reportError);
+      showError('Error al cargar el reporte.');
+      return undefined;
+    }
+
+    if (!reportData) return undefined;
+
+    const authorProfile = await this.getProfile(reportData.author_id);
+    const comments = await this.getReportComments(reportData.id);
+
+    return {
+      id: reportData.id,
+      title: reportData.title,
+      description: reportData.description,
+      type: reportData.type as ReportType,
+      barrio: reportData.barrio,
+      status: reportData.status as ReportStatus,
+      location: reportData.location || '',
+      createdAt: reportData.created_at,
+      updatedAt: reportData.updated_at,
+      authorId: reportData.author_id,
+      authorName: `${authorProfile?.first_name || ''} ${authorProfile?.last_name || ''}`.trim() || 'Usuario Anónimo',
+      images: reportData.image_urls ? reportData.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
+      comments: comments,
+      supportCount: reportData.support_count,
+      supportedBy: reportData.supported_by || [],
+    };
+  }
+
   /**
    * Obtiene todos los reportes con información de autor y comentarios.
    * @returns Un array de reportes.
    */
   async getReports(): Promise<Report[]> {
-    const { data, error } = await supabase
+    const { data: reportsData, error } = await supabase
       .from('reports')
-      .select('*') // Simplificado para diagnosticar
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -20,73 +101,42 @@ class ReportService {
       return [];
     }
 
-    if (!data) {
+    if (!reportsData) {
       return [];
     }
 
-    return data.map(report => ({
-      id: report.id,
-      title: report.title,
-      description: report.description,
-      type: report.type as ReportType,
-      barrio: report.barrio,
-      status: report.status as ReportStatus,
-      location: report.location || '',
-      createdAt: report.created_at,
-      updatedAt: report.updated_at,
-      authorId: report.author_id,
-      authorName: 'Usuario Anónimo', // Valor predeterminado temporal
-      images: report.image_urls ? report.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
-      comments: [], // Vacío temporalmente
-      supportCount: report.support_count,
-      supportedBy: report.supported_by || [],
-    }));
-  }
+    // Fetch all unique author profiles and all comments in parallel for efficiency
+    const uniqueAuthorIds = [...new Set(reportsData.map(r => r.author_id))];
+    const profilesPromises = uniqueAuthorIds.map(id => this.getProfile(id));
+    const allProfiles = await Promise.all(profilesPromises);
+    const profilesMap = new Map(uniqueAuthorIds.map((id, index) => [id, allProfiles[index]]));
 
-  /**
-   * Obtiene un reporte por su ID.
-   * @param id El ID del reporte.
-   * @returns El reporte encontrado o undefined.
-   */
-  async getReportById(id: string): Promise<Report | undefined> {
-    const { data, error } = await supabase
-      .from('reports')
-      .select('*, profiles(first_name, last_name, avatar_url), comments(*, profiles(first_name, last_name, avatar_url))')
-      .eq('id', id)
-      .single();
+    const commentsPromises = reportsData.map(r => this.getReportComments(r.id));
+    const allComments = await Promise.all(commentsPromises);
+    const commentsMap = new Map(reportsData.map((r, index) => [r.id, allComments[index]]));
 
-    if (error) {
-      console.error('Error fetching report by ID:', error);
-      showError('Error al cargar el reporte.');
-      return undefined;
-    }
+    return reportsData.map(reportData => {
+      const authorProfile = profilesMap.get(reportData.author_id);
+      const comments = commentsMap.get(reportData.id) || [];
 
-    if (!data) return undefined;
-
-    return {
-      id: data.id,
-      title: data.title,
-      description: data.description,
-      type: data.type as ReportType,
-      barrio: data.barrio,
-      status: data.status as ReportStatus,
-      location: data.location || '',
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-      authorId: data.author_id,
-      authorName: `${data.profiles?.first_name || ''} ${data.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
-      images: data.image_urls ? data.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
-      comments: data.comments ? data.comments.map((comment: any) => ({
-        id: comment.id,
-        userId: comment.author_id,
-        userName: `${comment.profiles?.first_name || ''} ${comment.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
-        content: comment.content,
-        imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
-        createdAt: comment.created_at,
-      })) : [],
-      supportCount: data.support_count,
-      supportedBy: data.supported_by || [],
-    };
+      return {
+        id: reportData.id,
+        title: reportData.title,
+        description: reportData.description,
+        type: reportData.type as ReportType,
+        barrio: reportData.barrio,
+        status: reportData.status as ReportStatus,
+        location: reportData.location || '',
+        createdAt: reportData.created_at,
+        updatedAt: reportData.updated_at,
+        authorId: reportData.author_id,
+        authorName: `${authorProfile?.first_name || ''} ${authorProfile?.last_name || ''}`.trim() || 'Usuario Anónimo',
+        images: reportData.image_urls ? reportData.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
+        comments: comments,
+        supportCount: reportData.support_count,
+        supportedBy: reportData.supported_by || [],
+      };
+    });
   }
 
   /**
@@ -95,9 +145,9 @@ class ReportService {
    * @returns Un array de reportes del usuario.
    */
   async getUserReports(userId: string): Promise<Report[]> {
-    const { data, error } = await supabase
+    const { data: reportsData, error } = await supabase
       .from('reports')
-      .select('*, profiles(first_name, last_name, avatar_url), comments(*, profiles(first_name, last_name, avatar_url))') // Incluir perfiles para comentarios
+      .select('*')
       .eq('author_id', userId)
       .order('created_at', { ascending: false });
 
@@ -107,34 +157,39 @@ class ReportService {
       return [];
     }
 
-    if (!data) {
+    if (!reportsData) {
       return [];
     }
 
-    return data.map(report => ({
-      id: report.id,
-      title: report.title,
-      description: report.description,
-      type: report.type as ReportType,
-      barrio: report.barrio,
-      status: report.status as ReportStatus,
-      location: report.location || '',
-      createdAt: report.created_at,
-      updatedAt: report.updated_at,
-      authorId: report.author_id,
-      authorName: `${report.profiles?.first_name || ''} ${report.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
-      images: report.image_urls ? report.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
-      comments: report.comments ? report.comments.map((comment: any) => ({
-        id: comment.id,
-        userId: comment.author_id,
-        userName: `${comment.profiles?.first_name || ''} ${comment.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo', // Usar datos del perfil
-        content: comment.content,
-        imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
-        createdAt: comment.created_at,
-      })) : [],
-      supportCount: report.support_count,
-      supportedBy: report.supported_by || [],
-    }));
+    // Fetch all comments for these reports in parallel
+    const commentsPromises = reportsData.map(r => this.getReportComments(r.id));
+    const allComments = await Promise.all(commentsPromises);
+    const commentsMap = new Map(reportsData.map((r, index) => [r.id, allComments[index]]));
+
+    // The author is the current user, so we can get their profile once
+    const authorProfile = await this.getProfile(userId);
+    const authorName = `${authorProfile?.first_name || ''} ${authorProfile?.last_name || ''}`.trim() || 'Usuario Anónimo';
+
+    return reportsData.map(reportData => {
+      const comments = commentsMap.get(reportData.id) || [];
+      return {
+        id: reportData.id,
+        title: reportData.title,
+        description: reportData.description,
+        type: reportData.type as ReportType,
+        barrio: reportData.barrio,
+        status: reportData.status as ReportStatus,
+        location: reportData.location || '',
+        createdAt: reportData.created_at,
+        updatedAt: reportData.updated_at,
+        authorId: reportData.author_id,
+        authorName: authorName,
+        images: reportData.image_urls ? reportData.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
+        comments: comments,
+        supportCount: reportData.support_count,
+        supportedBy: reportData.supported_by || [],
+      };
+    });
   }
 
   /**
@@ -160,7 +215,7 @@ class ReportService {
       }
     }
 
-    const { data: newReports, error } = await supabase
+    const { data: newReportData, error } = await supabase
       .from('reports')
       .insert({
         author_id: currentUser.id,
@@ -174,8 +229,8 @@ class ReportService {
         support_count: 0,
         supported_by: [],
       })
-      .select('*, profiles(first_name, last_name, avatar_url), comments(*, profiles(first_name, last_name, avatar_url))') // Incluir perfiles para comentarios
-      ;
+      .select('*')
+      .single();
 
     if (error) {
       console.error('Error creating report:', error);
@@ -183,38 +238,13 @@ class ReportService {
       return null;
     }
 
-    if (!newReports || newReports.length === 0) {
+    if (!newReportData) {
       showError('Error al crear el reporte: No se devolvieron datos.');
       return null;
     }
 
-    const newReport = newReports[0];
-
     showSuccess('Reporte creado exitosamente.');
-    return {
-      id: newReport.id,
-      title: newReport.title,
-      description: newReport.description,
-      type: newReport.type as ReportType,
-      barrio: newReport.barrio,
-      status: newReport.status as ReportStatus,
-      location: newReport.location || '',
-      createdAt: newReport.created_at,
-      updatedAt: newReport.updated_at,
-      authorId: newReport.author_id,
-      authorName: `${newReport.profiles?.first_name || ''} ${newReport.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
-      images: newReport.image_urls ? newReport.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
-      comments: newReport.comments ? newReport.comments.map((comment: any) => ({
-        id: comment.id,
-        userId: comment.author_id,
-        userName: `${comment.profiles?.first_name || ''} ${comment.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo', // Usar datos del perfil
-        content: comment.content,
-        imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
-        createdAt: comment.created_at,
-      })) : [],
-      supportCount: newReport.support_count,
-      supportedBy: newReport.supported_by || [],
-    };
+    return this.getReportById(newReportData.id); // Obtener el reporte completamente hidratado
   }
 
   /**
@@ -266,12 +296,12 @@ class ReportService {
       updateData.image_urls = imageUrlsToUpdate;
     }
 
-    const { data: updatedReports, error } = await supabase
+    const { data: updatedReportData, error } = await supabase
       .from('reports')
       .update(updateData)
       .eq('id', id)
-      .select('*, profiles(first_name, last_name, avatar_url), comments(*, profiles(first_name, last_name, avatar_url))') // Incluir perfiles para comentarios
-      ;
+      .select('*')
+      .single();
 
     if (error) {
       console.error('Error updating report:', error);
@@ -279,38 +309,13 @@ class ReportService {
       return null;
     }
 
-    if (!updatedReports || updatedReports.length === 0) {
+    if (!updatedReportData) {
       showError('Error al actualizar el reporte: No se devolvieron datos.');
       return null;
     }
 
-    const updatedReport = updatedReports[0];
-
     showSuccess('Reporte actualizado exitosamente.');
-    return {
-      id: updatedReport.id,
-      title: updatedReport.title,
-      description: updatedReport.description,
-      type: updatedReport.type as ReportType,
-      barrio: updatedReport.barrio,
-      status: updatedReport.status as ReportStatus,
-      location: updatedReport.location || '',
-      createdAt: updatedReport.created_at,
-      updatedAt: updatedReport.updated_at,
-      authorId: updatedReport.author_id,
-      authorName: `${updatedReport.profiles?.first_name || ''} ${updatedReport.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
-      images: updatedReport.image_urls ? updatedReport.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
-      comments: updatedReport.comments ? updatedReport.comments.map((comment: any) => ({
-        id: comment.id,
-        userId: comment.author_id,
-        userName: `${comment.profiles?.first_name || ''} ${comment.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo', // Usar datos del perfil
-        content: comment.content,
-        imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
-        createdAt: comment.created_at,
-      })) : [],
-      supportCount: updatedReport.support_count,
-      supportedBy: updatedReport.supported_by || [],
-    };
+    return this.getReportById(updatedReportData.id); // Obtener el reporte completamente hidratado
   }
 
   /**
@@ -380,7 +385,7 @@ class ReportService {
       showSuccess('Reporte apoyado.');
     }
 
-    const { data: updatedReports, error: updateError } = await supabase
+    const { data: updatedReportData, error: updateError } = await supabase
       .from('reports')
       .update({
         supported_by: newSupportedBy,
@@ -388,8 +393,8 @@ class ReportService {
         updated_at: new Date().toISOString(),
       })
       .eq('id', reportId)
-      .select('*, profiles(first_name, last_name, avatar_url), comments(*, profiles(first_name, last_name, avatar_url))') // Incluir perfiles para comentarios
-      ;
+      .select('*')
+      .single();
 
     if (updateError) {
       console.error('Error updating support:', updateError);
@@ -397,37 +402,12 @@ class ReportService {
       return null;
     }
 
-    if (!updatedReports || updatedReports.length === 0) {
+    if (!updatedReportData) {
       showError('Error al actualizar el apoyo: No se devolvieron datos.');
       return null;
     }
 
-    const updatedReport = updatedReports[0];
-
-    return {
-      id: updatedReport.id,
-      title: updatedReport.title,
-      description: updatedReport.description,
-      type: updatedReport.type as ReportType,
-      barrio: updatedReport.barrio,
-      status: updatedReport.status as ReportStatus,
-      location: updatedReport.location || '',
-      createdAt: updatedReport.created_at,
-      updatedAt: updatedReport.updated_at,
-      authorId: updatedReport.author_id,
-      authorName: `${updatedReport.profiles?.first_name || ''} ${updatedReport.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
-      images: updatedReport.image_urls ? updatedReport.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
-      comments: updatedReport.comments ? updatedReport.comments.map((comment: any) => ({
-        id: comment.id,
-        userId: comment.author_id,
-        userName: `${comment.profiles?.first_name || ''} ${comment.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo', // Usar datos del perfil
-        content: comment.content,
-        imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
-        createdAt: comment.created_at,
-      })) : [],
-      supportCount: updatedReport.support_count,
-      supportedBy: updatedReport.supported_by || [],
-    };
+    return this.getReportById(updatedReportData.id); // Obtener el reporte completamente hidratado
   }
 }
 
