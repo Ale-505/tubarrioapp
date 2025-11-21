@@ -1,9 +1,8 @@
 export interface User {
   id: string;
   email: string;
-  name: string;
-  avatar?: string;
-  password?: string; // Only for mock service simulation
+  name: string; // This will be derived from first_name/last_name or user_metadata
+  avatar?: string; // This will be derived from avatar_url in profiles or user_metadata
 }
 
 export type ReportStatus = 'Abierto' | 'En proceso' | 'Resuelto';

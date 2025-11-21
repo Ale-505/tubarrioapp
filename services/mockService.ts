@@ -66,59 +66,9 @@ const INITIAL_REPORTS: Report[] = [
 // In-memory store simulating database
 class MockBackend {
   private reports: Report[] = INITIAL_REPORTS;
-  private users: User[] = [
-    { id: 'user-001', email: 'demo@tubarrio.com', name: 'Demo User', password: 'password', avatar: 'https://ui-avatars.com/api/?name=Demo+User&background=2563eb&color=fff' },
-    { id: 'user-002', email: 'ana@tubarrio.com', name: 'Ana García', password: 'password', avatar: 'https://ui-avatars.com/api/?name=Ana+Garcia&background=random' }
-  ];
-  private currentUser: User | null = null;
-
-  // Auth
-  async register(name: string, email: string, password: string): Promise<User> {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    if (this.users.find(u => u.email === email)) {
-      throw new Error("El correo ya está registrado");
-    }
-
-    const newUser: User = {
-      id: `user-${Date.now()}`,
-      email,
-      name,
-      password,
-      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2563eb&color=fff`
-    };
-
-    this.users.push(newUser);
-    this.currentUser = newUser;
-    return newUser;
-  }
-
-  async login(email: string, password?: string): Promise<User> {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    const user = this.users.find(u => u.email === email);
-    
-    if (!user) {
-      throw new Error("Usuario no encontrado. Por favor regístrate.");
-    }
-    
-    if (password && user.password && user.password !== password) {
-        if (password !== 'password' && user.password !== password) {
-           throw new Error("Contraseña incorrecta");
-        }
-    }
-
-    this.currentUser = user;
-    return user;
-  }
-
-  async logout(): Promise<void> {
-    this.currentUser = null;
-  }
-
-  getUser(): User | null {
-    return this.currentUser;
-  }
+  // Auth methods removed, now handled by Supabase
+  // private users: User[] = [];
+  // private currentUser: User | null = null;
 
   // Reports
   async getReports(): Promise<Report[]> {
@@ -139,6 +89,10 @@ class MockBackend {
   async createReport(data: Partial<Report>, file?: File): Promise<Report> {
     await new Promise(resolve => setTimeout(resolve, 1000));
     
+    // This mock service will need to be updated to get the current user from Supabase context
+    // For now, it will use a placeholder or assume user is available from a different source
+    const mockCurrentUser = { id: 'mock-user-id', name: 'Mock User' }; // Placeholder
+
     const newReport: Report = {
       id: `rep-${Date.now()}`,
       title: data.title || 'Sin título',
@@ -149,8 +103,8 @@ class MockBackend {
       location: data.location || '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      authorId: this.currentUser?.id || 'anon',
-      authorName: this.currentUser?.name || 'Anónimo',
+      authorId: mockCurrentUser.id, // Use mock user
+      authorName: mockCurrentUser.name, // Use mock user
       images: file ? [URL.createObjectURL(file)] : (data.images || []),
       comments: [],
       supportCount: 0,
@@ -192,10 +146,12 @@ class MockBackend {
     const reportIndex = this.reports.findIndex(r => r.id === reportId);
     if (reportIndex === -1) throw new Error("Report not found");
 
+    const mockCurrentUser = { id: 'mock-user-id', name: 'Mock User' }; // Placeholder
+
     const newComment: Comment = {
       id: `c-${Date.now()}`,
-      userId: this.currentUser?.id || 'anon',
-      userName: this.currentUser?.name || 'Anónimo',
+      userId: mockCurrentUser.id, // Use mock user
+      userName: mockCurrentUser.name, // Use mock user
       content: text,
       imageUrl: file ? URL.createObjectURL(file) : undefined,
       createdAt: new Date().toISOString()

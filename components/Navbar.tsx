@@ -1,24 +1,19 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { MapPin, LogOut, Menu, X, PlusCircle, LayoutDashboard, User as UserIcon } from 'lucide-react';
-import { User } from '../types';
-import { api } from '../services/mockService';
+import { useSession } from '../components/SessionContextProvider';
+import { supabase } from '../integrations/supabase/client';
 
-interface NavbarProps {
-  user: User | null;
-  setUser: (user: User | null) => void;
-}
-
-const Navbar: React.FC<NavbarProps> = ({ user, setUser }) => {
+const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isOpen, setIsOpen] = React.useState(false);
+  const { user, setAppUser } = useSession();
 
-  const handleLogout = () => {
-    api.logout().then(() => {
-      setUser(null);
-      navigate('/');
-    });
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setAppUser(null); // Clear app user state
+    navigate('/');
   };
 
   const isActive = (path: string) => location.pathname === path;
