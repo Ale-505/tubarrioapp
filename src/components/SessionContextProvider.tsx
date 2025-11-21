@@ -21,6 +21,12 @@ export const useSession = () => {
   return context;
 };
 
+// Helper to get public URL for an image from the 'avatars' bucket
+const getPublicAvatarUrl = (path: string): string => {
+  const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+  return data.publicUrl;
+};
+
 export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
@@ -51,11 +57,12 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
             });
           } else if (profile) {
             const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+            const avatarUrl = profile.avatar_url ? getPublicAvatarUrl(profile.avatar_url) : `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || currentSession.user.email || 'Usuario')}&background=2563eb&color=fff`;
             setAppUser({
               id: currentSession.user.id,
               email: currentSession.user.email || '',
               name: fullName || currentSession.user.email || 'Usuario',
-              avatar: profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || currentSession.user.email || 'Usuario')}&background=2563eb&color=fff`
+              avatar: avatarUrl
             });
           } else {
              // Fallback if no profile found (shouldn't happen with trigger)

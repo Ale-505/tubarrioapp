@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Search, Filter } from 'lucide-react';
-import { api } from '../services/mockService';
+import { supabaseService } from '../services/supabaseService'; // Usar el nuevo servicio
 import { Report, FilterState } from '../types';
 import { BARRIOS, REPORT_TYPES } from '../constants';
 import ReportCard from '../components/ReportCard';
+import { showError } from '@/src/utils/toast';
 
 const Dashboard: React.FC = () => {
   const [reports, setReports] = useState<Report[]>([]);
@@ -18,10 +19,11 @@ const Dashboard: React.FC = () => {
     const fetchReports = async () => {
       setLoading(true);
       try {
-        const data = await api.getReports();
+        const data = await supabaseService.getReports();
         setReports(data);
       } catch (error) {
         console.error(error);
+        showError('Error al cargar los reportes.');
       } finally {
         setLoading(false);
       }

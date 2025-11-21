@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Camera, MapPin, AlertCircle, Save } from 'lucide-react';
-import { api } from '@/services/mockService';
+import { supabaseService } from '@/services/supabaseService'; // Usar el nuevo servicio
 import { BARRIOS, REPORT_TYPES } from '@/constants';
 import { ReportType } from '@/types';
+import { useSession } from '@/src/components/SessionContextProvider';
+import { showError, showSuccess } from '@/src/utils/toast';
 
 const CreateReport: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEditMode = !!id;
+  const { user: currentUser } = useSession();
 
   const [loading, setLoading] = useState(false);
   const [initLoading, setInitLoading] = useState(isEditMode);
@@ -21,15 +24,15 @@ const CreateReport: React.FC = () => {
     location: '',
     description: ''
   });
-  const [existingImage, setExistingImage] = useState<string>('');
+  const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
   const [file, setFile] = useState<File | undefined>(undefined);
 
   useEffect(() => {
     if (isEditMode && id) {
       const fetchReport = async () => {
         try {
-          const report = await api.getReportById(id);
-          if (report) {
+          const report = await supabaseService.getReportById(id);
+          if (report && currentUser && report.authorId === currentUser.id) {
              setFormData({
                title: report.title,
                type: report.type,
@@ -37,27 +40,35 @@ const CreateReport: React.FC = () => {
                location: report.location,
                description: report.description
              });
-             if (report.images.length > 0) {
-               setExistingImage(report.images[0]);
-             }
+             setExistingImageUrls(report.images);
           } else {
+             showError('No tienes permiso para editar este reporte o no existe.');
              navigate('/dashboard');
           }
         } catch (err) {
           console.error(err);
+          showError('Error al cargar la información del reporte.');
           navigate('/dashboard');
         } finally {
           setInitLoading(false);
         }
       };
       fetchReport();
+    } else {
+      setInitLoading(false);
     }
-  }, [isEditMode, id, navigate]);
+  }, [isEditMode, id, navigate, currentUser]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+
+    if (!currentUser) {
+      showError('Debes iniciar sesión para realizar esta acción.');
+      setLoading(false);
+      return;
+    }
 
     // Basic validation
     if (!formData.title || !formData.type || !formData.barrio || !formData.description) {
@@ -68,19 +79,24 @@ const CreateReport: React.FC = () => {
 
     try {
       if (isEditMode && id) {
-        await api.updateReport(id, {
+        const updatedReport = await supabaseService.updateReport(id, {
           ...formData,
           type: formData.type as ReportType
-        }, file);
-        navigate('/mis-aportes');
+        }, file, existingImageUrls);
+        if (updatedReport) {
+          navigate('/mis-aportes');
+        }
       } else {
-        await api.createReport({
+        const newReport = await supabaseService.createReport({
           ...formData,
           type: formData.type as ReportType
-        }, file);
-        navigate('/dashboard');
+        }, file, currentUser);
+        if (newReport) {
+          navigate('/dashboard');
+        }
       }
     } catch (err) {
+      console.error(err);
       setError('Error al guardar el reporte. Inténtalo de nuevo.');
     } finally {
       setLoading(false);
@@ -190,7 +206,7 @@ const CreateReport: React.FC = () => {
                   <Camera className="mx-auto h-12 w-12 text-slate-400" />
                   <div className="flex text-sm text-slate-600">
                     <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none">
-                      <span>{isEditMode && existingImage && !file ? 'Cambiar archivo' : 'Sube un archivo'}</span>
+                      <span>{isEditMode && existingImageUrls.length > 0 && !file ? 'Cambiar archivo' : 'Sube un archivo'}</span>
                       <input 
                         id="file-upload" 
                         name="file-upload" 
@@ -203,14 +219,14 @@ const CreateReport: React.FC = () => {
                     <p className="pl-1">o arrastra y suelta</p>
                   </div>
                   <p className="text-xs text-slate-500">
-                    {file ? `Seleccionado: ${file.name}` : (existingImage ? "Imagen actual guardada (sube otra para reemplazar)" : "PNG, JPG hasta 5MB")}
+                    {file ? `Seleccionado: ${file.name}` : (isEditMode && existingImageUrls.length > 0 ? "Imagen actual guardada (sube otra para reemplazar)" : "PNG, JPG hasta 5MB")}
                   </p>
                 </div>
               </div>
-              {isEditMode && existingImage && !file && (
+              {isEditMode && existingImageUrls.length > 0 && !file && (
                   <div className="mt-2">
                       <p className="text-xs text-slate-500 mb-1">Imagen actual:</p>
-                      <img src={existingImage} alt="Actual" className="h-20 w-20 object-cover rounded-md border" />
+                      <img src={existingImageUrls[0]} alt="Actual" className="h-20 w-20 object-cover rounded-md border" />
                   </div>
               )}
             </div>

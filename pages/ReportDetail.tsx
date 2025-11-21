@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api } from '@/services/mockService';
+import { supabaseService } from '@/services/supabaseService'; // Usar el nuevo servicio
 import { Report, ReportStatus } from '@/types';
 import StatusBadge from '@/components/StatusBadge';
 import { MapPin, Calendar, User, ArrowLeft, Send, ThumbsUp, Image as ImageIcon, X, ChevronDown } from 'lucide-react';
-import { useSession } from '@/src/components/SessionContextProvider'; // Import useSession
+import { useSession } from '@/src/components/SessionContextProvider';
+import { showError, showSuccess } from '@/src/utils/toast';
 
 const ReportDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -15,19 +16,24 @@ const ReportDetail: React.FC = () => {
   const [commentFile, setCommentFile] = useState<File | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
   
-  const { user: currentUser } = useSession(); // Get current user from session
+  const { user: currentUser } = useSession();
   const isAuthor = currentUser && report && currentUser.id === report.authorId;
   const isSupported = report?.supportedBy?.includes(currentUser?.id || '');
 
   useEffect(() => {
     const fetchReport = async () => {
       if (!id) return;
+      setLoading(true);
       try {
-        const data = await api.getReportById(id);
+        const data = await supabaseService.getReportById(id);
         if (data) setReport(data);
-        else navigate('/dashboard');
+        else {
+          showError('Reporte no encontrado.');
+          navigate('/dashboard');
+        }
       } catch (error) {
         console.error(error);
+        showError('Error al cargar el detalle del reporte.');
       } finally {
         setLoading(false);
       }
@@ -37,41 +43,60 @@ const ReportDetail: React.FC = () => {
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim() || !report || !currentUser) return; // Ensure currentUser exists
+    if (!newComment.trim() || !report || !currentUser) {
+      showError('Debes iniciar sesión y escribir un comentario.');
+      return;
+    }
     setSubmitting(true);
     try {
-      const comment = await api.addComment(report.id, newComment, commentFile, currentUser); // Pass currentUser
-      setReport({
-        ...report,
-        comments: [...report.comments, comment]
-      });
-      setNewComment('');
-      setCommentFile(undefined);
+      const addedComment = await supabaseService.addComment(report.id, newComment, commentFile, currentUser);
+      if (addedComment) {
+        setReport(prevReport => prevReport ? {
+          ...prevReport,
+          comments: [...prevReport.comments, addedComment]
+        } : null);
+        setNewComment('');
+        setCommentFile(undefined);
+      }
     } catch (err) {
       console.error(err);
+      showError('Error al añadir el comentario.');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleSupport = async () => {
-      if(!report || !currentUser) return;
+      if(!report || !currentUser) {
+        showError('Debes iniciar sesión para apoyar un reporte.');
+        return;
+      }
       try {
-          const updatedReport = await api.toggleSupport(report.id, currentUser.id);
-          setReport(updatedReport);
+          const updatedReport = await supabaseService.toggleSupport(report.id, currentUser.id);
+          if (updatedReport) {
+            setReport(updatedReport);
+          }
       } catch (e) {
           console.error(e);
+          showError('Error al cambiar el estado de apoyo.');
       }
   }
 
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-      if (!report || !isAuthor) return;
+      if (!report || !isAuthor) {
+        showError('No tienes permiso para cambiar el estado de este reporte.');
+        return;
+      }
       const newStatus = e.target.value as ReportStatus;
       try {
-          await api.updateReport(report.id, { status: newStatus });
-          setReport({ ...report, status: newStatus });
+          const updatedReport = await supabaseService.updateReport(report.id, { status: newStatus });
+          if (updatedReport) {
+            setReport({ ...report, status: newStatus });
+            showSuccess('Estado del reporte actualizado.');
+          }
       } catch (error) {
           console.error("Error actualizando estado", error);
+          showError('Error al actualizar el estado del reporte.');
       }
   };
 
@@ -98,7 +123,7 @@ const ReportDetail: React.FC = () => {
               <div>
                  <h1 className="text-2xl font-bold text-slate-900 mb-2">{report.title}</h1>
                  <div className="flex items-center gap-2 text-sm text-slate-500">
-                   <span className="font-medium text-blue-600">#{report.id}</span>
+                   <span className="font-medium text-blue-600">#{report.id.substring(0, 8)}</span>
                    <span>•</span>
                    <Calendar size={14} />
                    <span>{new Date(report.createdAt).toLocaleDateString()}</span>

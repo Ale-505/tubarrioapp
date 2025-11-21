@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api } from '@/services/mockService';
+import { supabaseService } from '@/services/supabaseService'; // Usar el nuevo servicio
 import { Report, Comment } from '@/types';
 import { User as UserType } from '@/types';
 import { Edit2, Trash2, MessageSquare, FileText, ExternalLink } from 'lucide-react';
 import StatusBadge from '@/components/StatusBadge';
+import { showError, showSuccess } from '@/src/utils/toast';
 
 interface MyContributionsProps {
     user: UserType;
@@ -20,13 +21,14 @@ const MyContributions: React.FC<MyContributionsProps> = ({ user }) => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const myReports = await api.getUserReports(user.id);
+      const myReports = await supabaseService.getUserReports(user.id);
       setReports(myReports);
       
-      const myComments = await api.getUserComments(user.id);
+      const myComments = await supabaseService.getUserComments(user.id);
       setComments(myComments);
     } catch (error) {
       console.error(error);
+      showError('Error al cargar tus contribuciones.');
     } finally {
       setLoading(false);
     }
@@ -39,10 +41,12 @@ const MyContributions: React.FC<MyContributionsProps> = ({ user }) => {
   const handleDeleteReport = async (id: string) => {
       if(window.confirm("¿Estás seguro de querer eliminar este reporte? Esta acción no se puede deshacer.")) {
           try {
-            await api.deleteReport(id);
+            await supabaseService.deleteReport(id);
             setReports(prevReports => prevReports.filter(r => r.id !== id));
+            showSuccess('Reporte eliminado.');
           } catch (e) {
-              alert("Error al eliminar el reporte");
+              console.error(e);
+              showError("Error al eliminar el reporte.");
           }
       }
   }
@@ -50,10 +54,12 @@ const MyContributions: React.FC<MyContributionsProps> = ({ user }) => {
   const handleDeleteComment = async (reportId: string, commentId: string) => {
       if(window.confirm("¿Eliminar este comentario?")) {
           try {
-            await api.deleteComment(reportId, commentId);
+            await supabaseService.deleteComment(reportId, commentId);
             setComments(prevComments => prevComments.filter(c => c.comment.id !== commentId));
+            showSuccess('Comentario eliminado.');
           } catch (e) {
-              alert("Error al eliminar el comentario");
+              console.error(e);
+              showError("Error al eliminar el comentario.");
           }
       }
   }
