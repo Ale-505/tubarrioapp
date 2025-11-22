@@ -5,7 +5,7 @@ import { uploadImage, deleteImage, getPublicImageUrl, BUCKET_REPORT_IMAGES, BUCK
 
 class ReportService {
 
-  // Función auxiliar para obtener un perfil de usuario
+  // Existing helper for single profile (used by getReportById)
   private async getProfile(userId: string): Promise<{ first_name: string; last_name: string; avatar_url: string | null } | null> {
     const { data, error } = await supabase
       .from('profiles')
@@ -18,6 +18,28 @@ class ReportService {
       return null;
     }
     return data;
+  }
+
+  // NEW helper to fetch multiple profiles by IDs
+  private async getProfilesByIds(userIds: string[]): Promise<Map<string, { first_name: string; last_name: string; avatar_url: string | null }>> {
+    if (userIds.length === 0) {
+      return new Map();
+    }
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name, avatar_url')
+      .in('id', userIds);
+
+    if (error) {
+      console.error('Error fetching multiple profiles:', error);
+      return new Map();
+    }
+
+    const profilesMap = new Map<string, { first_name: string; last_name: string; avatar_url: string | null }>();
+    data.forEach(profile => {
+      profilesMap.set(profile.id, profile);
+    });
+    return profilesMap;
   }
 
   // Función auxiliar para obtener comentarios de un reporte
@@ -64,7 +86,7 @@ class ReportService {
 
     if (!reportData) return undefined;
 
-    const authorProfile = await this.getProfile(reportData.author_id);
+    const authorProfile = await this.getProfile(reportData.author_id); // Use single profile fetch
     const comments = await this.getReportComments(reportData.id);
 
     return {
@@ -107,15 +129,13 @@ class ReportService {
       return [];
     }
 
-    // Fetch all unique author profiles in parallel for efficiency
+    // Fetch all unique author profiles in a single query for efficiency
     const uniqueAuthorIds = [...new Set(reportsData.map(r => r.author_id))];
-    const profilesPromises = uniqueAuthorIds.map(id => this.getProfile(id));
-    const allProfiles = await Promise.all(profilesPromises);
-    const profilesMap = new Map(uniqueAuthorIds.map((id, index) => [id, allProfiles[index]]));
+    const profilesMap = await this.getProfilesByIds(uniqueAuthorIds); // Use new helper
 
-    return reportsData.map((reportData: any) => { // Usar 'any' temporalmente para el conteo
+    return reportsData.map((reportData: any) => {
       const authorProfile = profilesMap.get(reportData.author_id);
-      const commentCount = reportData.comment_count?.[0]?.count || 0; // Extraer el conteo
+      const commentCount = reportData.comment_count?.[0]?.count || 0;
 
       return {
         id: reportData.id,
@@ -130,7 +150,7 @@ class ReportService {
         authorId: reportData.author_id,
         authorName: `${authorProfile?.first_name || ''} ${authorProfile?.last_name || ''}`.trim() || 'Usuario Anónimo',
         images: reportData.image_urls ? reportData.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
-        comments: [], // No se cargan los comentarios completos aquí
+        comments: [],
         supportCount: reportData.support_count,
         supportedBy: reportData.supported_by || [],
         commentCount: commentCount,
@@ -160,12 +180,12 @@ class ReportService {
       return [];
     }
 
-    // The author is the current user, so we can get their profile once
-    const authorProfile = await this.getProfile(userId);
+    // The author is the current user, so we can fetch their profile once
+    const authorProfile = await this.getProfile(userId); // Use single profile fetch
     const authorName = `${authorProfile?.first_name || ''} ${authorProfile?.last_name || ''}`.trim() || 'Usuario Anónimo';
 
-    return reportsData.map((reportData: any) => { // Usar 'any' temporalmente para el conteo
-      const commentCount = reportData.comment_count?.[0]?.count || 0; // Extraer el conteo
+    return reportsData.map((reportData: any) => {
+      const commentCount = reportData.comment_count?.[0]?.count || 0;
       return {
         id: reportData.id,
         title: reportData.title,
@@ -179,7 +199,7 @@ class ReportService {
         authorId: reportData.author_id,
         authorName: authorName,
         images: reportData.image_urls ? reportData.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
-        comments: [], // No se cargan los comentarios completos aquí
+        comments: [],
         supportCount: reportData.support_count,
         supportedBy: reportData.supported_by || [],
         commentCount: commentCount,
