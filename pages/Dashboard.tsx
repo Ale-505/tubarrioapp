@@ -14,30 +14,49 @@ const Dashboard: React.FC = () => {
     barrio: '',
     type: ''
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const REPORTS_PER_PAGE = 9; // Mostrar 9 reportes por página
+
+  const fetchReports = async (page: number, append: boolean = false) => {
+    setLoading(true);
+    try {
+      const { reports: newReports, totalCount } = await reportService.getReports(page, REPORTS_PER_PAGE);
+      
+      if (append) {
+        setReports(prevReports => [...prevReports, ...newReports]);
+      } else {
+        setReports(newReports);
+      }
+      const currentTotalReportsLoaded = append ? reports.length + newReports.length : newReports.length;
+      setHasMore(currentTotalReportsLoaded < totalCount);
+    } catch (error) {
+      console.error(error);
+      showError('Error al cargar los reportes.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchReports = async () => {
-      setLoading(true);
-      try {
-        const data = await reportService.getReports();
-        setReports(data);
-      } catch (error) {
-        console.error(error);
-        showError('Error al cargar los reportes.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchReports();
-  }, []);
+    setCurrentPage(1); // Resetear la página cuando los filtros cambian
+    fetchReports(1);
+  }, [filters.keyword, filters.barrio, filters.type]); // Volver a cargar cuando los filtros cambian
 
-  const filteredReports = reports.filter(report => {
+  const handleLoadMore = () => {
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    fetchReports(nextPage, true); // Añadir nuevos reportes
+  };
+
+  // Comprobación defensiva: Asegurarse de que 'reports' es un array antes de llamar a filter
+  const filteredReports = Array.isArray(reports) ? reports.filter(report => {
     const matchKeyword = report.title.toLowerCase().includes(filters.keyword.toLowerCase()) || 
                          report.description.toLowerCase().includes(filters.keyword.toLowerCase());
     const matchBarrio = filters.barrio ? report.barrio === filters.barrio : true;
     const matchType = filters.type ? report.type === filters.type : true;
     return matchKeyword && matchBarrio && matchType;
-  });
+  }) : [];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -90,7 +109,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Results Grid */}
-      {loading ? (
+      {loading && reports.length === 0 ? ( // Mostrar spinner de carga inicial solo si no hay reportes cargados
         <div className="flex justify-center py-20">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
@@ -107,6 +126,18 @@ const Dashboard: React.FC = () => {
               <Filter size={48} className="mx-auto text-slate-300 mb-4" />
               <h3 className="text-lg font-medium text-slate-900">No se encontraron reportes</h3>
               <p className="text-slate-500">Intenta ajustar tus filtros de búsqueda.</p>
+            </div>
+          )}
+          
+          {hasMore && (
+            <div className="flex justify-center mt-8">
+              <button
+                onClick={handleLoadMore}
+                disabled={loading}
+                className="px-6 py-3 bg-blue-600 text-white rounded-md shadow-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Cargando más...' : 'Cargar más reportes'}
+              </button>
             </div>
           )}
         </>
