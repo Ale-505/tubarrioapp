@@ -3,6 +3,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/src/integrations/supabase/client';
 import { User as AppUser } from '../types';
 import { getPublicImageUrl, BUCKET_AVATARS } from '@/src/services';
+import { showError } from '@/src/utils/toast'; // Import showError
 
 interface SessionContextType {
   session: Session | null;
@@ -33,6 +34,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
       const { data: { session: initialSession }, error } = await supabase.auth.getSession();
       if (error) {
         console.error("Error getting initial session:", error);
+        showError(`Error al conectar con Supabase: ${error.message}`); // Show toast error
       }
       
       setSession(initialSession);
@@ -46,8 +48,9 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
           .eq('id', initialSession.user.id)
           .single();
 
-        if (profileError) {
+        if (profileError && profileError.code !== 'PGRST116') { // PGRST116 means no rows found, which is handled below
           console.error('Error fetching profile:', profileError);
+          showError(`Error al cargar el perfil de usuario: ${profileError.message}`); // Show toast error
           setAppUser({
             id: initialSession.user.id,
             email: initialSession.user.email || '',
@@ -64,7 +67,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
             avatar: avatarUrl
           });
         } else {
-           // Fallback if no profile found (shouldn't happen with trigger)
+           // Fallback if no profile found (shouldn't happen with trigger, but good for robustness)
            setAppUser({
             id: initialSession.user.id,
             email: initialSession.user.email || '',
@@ -82,8 +85,6 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        // Only update if the session actually changes, or if it's an explicit event
-        // The INITIAL_SESSION event is now handled by getInitialSession()
         if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
           setSession(currentSession);
           setSupabaseUser(currentSession?.user || null);
@@ -96,8 +97,9 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
               .eq('id', currentSession.user.id)
               .single();
 
-            if (profileError) {
+            if (profileError && profileError.code !== 'PGRST116') {
               console.error('Error fetching profile:', profileError);
+              showError(`Error al cargar el perfil de usuario: ${profileError.message}`); // Show toast error
               setAppUser({
                 id: currentSession.user.id,
                 email: currentSession.user.email || '',
