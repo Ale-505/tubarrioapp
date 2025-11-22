@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/src/integrations/supabase/client';
-import { User as AppUser } from '../types';
+import { User as AppUser } from '../../types'; // Ruta corregida
 import { getPublicImageUrl, BUCKET_AVATARS } from '@/src/services';
 import { showError } from '@/src/utils/toast';
 

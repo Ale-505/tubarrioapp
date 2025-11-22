@@ -8,11 +8,11 @@ class CommentService {
    * Añade un nuevo comentario a un reporte.
    * @param reportId El ID del reporte al que se añade el comentario.
    * @param content El contenido del comentario.
-   * @param file La imagen adjunta al comentario (opcional).
    * @param currentUser El usuario actual (se asume que ya está autenticado).
+   * @param file La imagen adjunta al comentario (opcional).
    * @returns El comentario creado o null si falla.
    */
-  async addComment(reportId: string, content: string, file?: File, currentUser: User): Promise<Comment | null> {
+  async addComment(reportId: string, content: string, currentUser: User, file?: File): Promise<Comment | null> {
     // La validación de currentUser se realiza en el componente que llama a esta función.
 
     let imageUrl: string | undefined;
