@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '../integrations/supabase/client';
+import { supabase } from '@/src/integrations/supabase/client'; // Se cambió para usar el alias
 import { User as AppUser } from '../types';
-import { getPublicImageUrl, BUCKET_AVATARS } from '@/src/services'; // Importar desde el índice de servicios
+import { getPublicImageUrl, BUCKET_AVATARS } from '@/src/services';
 
 interface SessionContextType {
   session: Session | null;
