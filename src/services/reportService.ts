@@ -131,7 +131,7 @@ class ReportService {
 
     // Fetch all unique author profiles in a single query for efficiency
     const uniqueAuthorIds = [...new Set(reportsData.map(r => r.author_id))];
-    const profilesMap = await this.getProfilesByIds(uniqueAuthorIds); // Use new helper
+    const profilesMap = await this.getProfilesByIds(uniqueAuthorIds); // Correctly using the batch fetch
 
     return reportsData.map((reportData: any) => {
       const authorProfile = profilesMap.get(reportData.author_id);
@@ -181,7 +181,7 @@ class ReportService {
     }
 
     // The author is the current user, so we can fetch their profile once
-    const authorProfile = await this.getProfile(userId); // Use single profile fetch
+    const authorProfile = await this.getProfile(userId); // This is already efficient (1 query for the user's own profile)
     const authorName = `${authorProfile?.first_name || ''} ${authorProfile?.last_name || ''}`.trim() || 'Usuario Anónimo';
 
     return reportsData.map((reportData: any) => {
