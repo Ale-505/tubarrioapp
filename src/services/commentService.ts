@@ -1,7 +1,7 @@
 import { supabase } from '@/src/integrations/supabase/client';
 import { Comment, User } from '@/types';
 import { showSuccess, showError } from '@/src/utils/toast';
-import { uploadImage, deleteImage, getPublicImageUrl, BUCKET_COMMENT_IMAGES } from './storageService';
+import { uploadImage, deleteImage, getPublicImageUrl, BUCKET_COMMENT_IMAGES, BUCKET_AVATARS } from './storageService';
 
 class CommentService {
   /**
@@ -50,6 +50,7 @@ class CommentService {
       id: newComments.id,
       userId: newComments.author_id,
       userName: `${newComments.profiles?.first_name || ''} ${newComments.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo',
+      userAvatar: newComments.profiles?.avatar_url ? getPublicImageUrl(BUCKET_AVATARS, newComments.profiles.avatar_url) : undefined, // Incluir avatar
       content: newComments.content,
       imageUrl: newComments.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, newComments.image_url) : undefined,
       createdAt: newComments.created_at,
@@ -83,6 +84,7 @@ class CommentService {
         id: comment.id,
         userId: comment.author_id,
         userName: `${comment.profiles?.first_name || ''} ${comment.profiles?.last_name || ''}`.trim() || 'Usuario Anónimo', // Usar datos del perfil
+        userAvatar: comment.profiles?.avatar_url ? getPublicImageUrl(BUCKET_AVATARS, comment.profiles.avatar_url) : undefined, // Incluir avatar
         content: comment.content,
         imageUrl: comment.image_url ? getPublicImageUrl(BUCKET_COMMENT_IMAGES, comment.image_url) : undefined,
         createdAt: comment.created_at,

@@ -12,6 +12,7 @@ export interface Comment {
   id: string;
   userId: string;
   userName: string;
+  userAvatar?: string; // Nuevo campo para la URL del avatar del usuario
   content: string;
   imageUrl?: string;
   createdAt: string;

@@ -199,9 +199,13 @@ const ReportDetail: React.FC = () => {
                  report.comments.map(comment => (
                    <div key={comment.id} className="flex gap-4">
                      <div className="flex-shrink-0">
-                       <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-                         {comment.userName.charAt(0).toUpperCase()}
-                       </div>
+                       {comment.userAvatar ? (
+                         <img src={comment.userAvatar} alt={comment.userName} className="h-10 w-10 rounded-full object-cover border border-slate-200" />
+                       ) : (
+                         <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                           {comment.userName.charAt(0).toUpperCase()}
+                         </div>
+                       )}
                      </div>
                      <div className="flex-1 bg-slate-50 rounded-lg p-4">
                        <div className="flex justify-between items-center mb-1">
