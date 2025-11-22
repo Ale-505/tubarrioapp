@@ -110,30 +110,51 @@ class ReportService {
   }
 
   /**
-   * Obtiene todos los reportes con información de autor y conteo de comentarios.
-   * @returns Un array de reportes.
+   * Obtiene todos los reportes con información de autor y conteo de comentarios, con paginación.
+   * @param page La página actual (1-indexed).
+   * @param pageSize El número de reportes por página.
+   * @returns Un objeto con un array de reportes y el conteo total.
    */
-  async getReports(): Promise<Report[]> {
-    const { data: reportsData, error } = await supabase
+  async getReports(page: number = 1, pageSize: number = 10): Promise<{ reports: Report[], totalCount: number }> {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data: reportsData, error, count } = await supabase
       .from('reports')
-      .select('*, comment_count:comments(count)') // Seleccionar el conteo de comentarios
-      .order('created_at', { ascending: false });
+      .select(
+        `
+        id,
+        title,
+        description,
+        type,
+        barrio,
+        status,
+        created_at,
+        author_id,
+        support_count,
+        supported_by,
+        comment_count:comments(count)
+        `,
+        { count: 'exact' } // Request exact count for pagination
+      )
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
     if (error) {
       console.error('Error fetching reports:', error);
       showError('Error al cargar los reportes.');
-      return [];
+      return { reports: [], totalCount: 0 };
     }
 
     if (!reportsData) {
-      return [];
+      return { reports: [], totalCount: 0 };
     }
 
     // Fetch all unique author profiles in a single query for efficiency
     const uniqueAuthorIds = [...new Set(reportsData.map(r => r.author_id))];
-    const profilesMap = await this.getProfilesByIds(uniqueAuthorIds); // Correctly using the batch fetch
+    const profilesMap = await this.getProfilesByIds(uniqueAuthorIds);
 
-    return reportsData.map((reportData: any) => {
+    const reports = reportsData.map((reportData: any) => {
       const authorProfile = profilesMap.get(reportData.author_id);
       const commentCount = reportData.comment_count?.[0]?.count || 0;
 
@@ -144,18 +165,20 @@ class ReportService {
         type: reportData.type as ReportType,
         barrio: reportData.barrio,
         status: reportData.status as ReportStatus,
-        location: reportData.location || '',
+        location: reportData.location || '', // Mantener para compatibilidad con el tipo Report
         createdAt: reportData.created_at,
-        updatedAt: reportData.updated_at,
+        updatedAt: reportData.updated_at || '', // Mantener para compatibilidad con el tipo Report
         authorId: reportData.author_id,
         authorName: `${authorProfile?.first_name || ''} ${authorProfile?.last_name || ''}`.trim() || 'Usuario Anónimo',
-        images: reportData.image_urls ? reportData.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
-        comments: [],
+        images: reportData.image_urls ? reportData.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [], // Mantener para compatibilidad con el tipo Report
+        comments: [], // Comments are not fetched in this general list view
         supportCount: reportData.support_count,
         supportedBy: reportData.supported_by || [],
         commentCount: commentCount,
       };
     });
+
+    return { reports, totalCount: count || 0 };
   }
 
   /**
