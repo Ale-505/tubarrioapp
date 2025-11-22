@@ -59,7 +59,17 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
           } else if (profile) {
             console.log('SessionContextProvider: Profile fetched:', profile);
             const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
-            const avatarUrl = profile.avatar_url ? getPublicImageUrl(BUCKET_AVATARS, profile.avatar_url) : `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || currentSession.user.email || 'Usuario')}&background=2563eb&color=fff`;
+            let avatarUrl: string;
+            if (profile.avatar_url && (profile.avatar_url.startsWith('http://') || profile.avatar_url.startsWith('https://'))) {
+              // Si avatar_url ya es una URL completa (como de ui-avatars.com), úsala directamente
+              avatarUrl = profile.avatar_url;
+            } else if (profile.avatar_url) {
+              // De lo contrario, asume que es una ruta dentro de nuestro bucket de Supabase Storage
+              avatarUrl = getPublicImageUrl(BUCKET_AVATARS, profile.avatar_url);
+            } else {
+              // Fallback a ui-avatars.com si no hay avatar_url presente
+              avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || currentSession.user.email || 'Usuario')}&background=2563eb&color=fff`;
+            }
             setAppUser({
               id: currentSession.user.id,
               email: currentSession.user.email || '',
