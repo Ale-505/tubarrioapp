@@ -52,7 +52,7 @@ const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
             <ThumbsUp size={16} /> {report.supportCount}
           </span>
           <span className="flex items-center gap-1 hover:text-blue-600">
-            <MessageCircle size={16} /> {report.comments.length}
+            <MessageCircle size={16} /> {report.commentCount}
           </span>
         </div>
         <span className="text-xs font-medium text-blue-600">Ver detalle &rarr;</span>

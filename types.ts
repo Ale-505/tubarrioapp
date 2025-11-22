@@ -35,6 +35,7 @@ export interface Report {
   comments: Comment[];
   supportCount: number;
   supportedBy: string[]; // Array of user IDs who supported this report
+  commentCount: number; // Nuevo campo para el número de comentarios
 }
 
 export interface FilterState {

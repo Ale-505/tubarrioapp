@@ -83,17 +83,18 @@ class ReportService {
       comments: comments,
       supportCount: reportData.support_count,
       supportedBy: reportData.supported_by || [],
+      commentCount: comments.length, // Se calcula aquí para el detalle
     };
   }
 
   /**
-   * Obtiene todos los reportes con información de autor y comentarios.
+   * Obtiene todos los reportes con información de autor y conteo de comentarios.
    * @returns Un array de reportes.
    */
   async getReports(): Promise<Report[]> {
     const { data: reportsData, error } = await supabase
       .from('reports')
-      .select('*')
+      .select('*, comment_count:comments(count)') // Seleccionar el conteo de comentarios
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -106,19 +107,15 @@ class ReportService {
       return [];
     }
 
-    // Fetch all unique author profiles and all comments in parallel for efficiency
+    // Fetch all unique author profiles in parallel for efficiency
     const uniqueAuthorIds = [...new Set(reportsData.map(r => r.author_id))];
     const profilesPromises = uniqueAuthorIds.map(id => this.getProfile(id));
     const allProfiles = await Promise.all(profilesPromises);
     const profilesMap = new Map(uniqueAuthorIds.map((id, index) => [id, allProfiles[index]]));
 
-    const commentsPromises = reportsData.map(r => this.getReportComments(r.id));
-    const allComments = await Promise.all(commentsPromises);
-    const commentsMap = new Map(reportsData.map((r, index) => [r.id, allComments[index]]));
-
-    return reportsData.map(reportData => {
+    return reportsData.map((reportData: any) => { // Usar 'any' temporalmente para el conteo
       const authorProfile = profilesMap.get(reportData.author_id);
-      const comments = commentsMap.get(reportData.id) || [];
+      const commentCount = reportData.comment_count?.[0]?.count || 0; // Extraer el conteo
 
       return {
         id: reportData.id,
@@ -133,22 +130,23 @@ class ReportService {
         authorId: reportData.author_id,
         authorName: `${authorProfile?.first_name || ''} ${authorProfile?.last_name || ''}`.trim() || 'Usuario Anónimo',
         images: reportData.image_urls ? reportData.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
-        comments: comments,
+        comments: [], // No se cargan los comentarios completos aquí
         supportCount: reportData.support_count,
         supportedBy: reportData.supported_by || [],
+        commentCount: commentCount,
       };
     });
   }
 
   /**
-   * Obtiene los reportes creados por un usuario específico.
+   * Obtiene los reportes creados por un usuario específico con conteo de comentarios.
    * @param userId El ID del usuario.
    * @returns Un array de reportes del usuario.
    */
   async getUserReports(userId: string): Promise<Report[]> {
     const { data: reportsData, error } = await supabase
       .from('reports')
-      .select('*')
+      .select('*, comment_count:comments(count)') // Seleccionar el conteo de comentarios
       .eq('author_id', userId)
       .order('created_at', { ascending: false });
 
@@ -162,17 +160,12 @@ class ReportService {
       return [];
     }
 
-    // Fetch all comments for these reports in parallel
-    const commentsPromises = reportsData.map(r => this.getReportComments(r.id));
-    const allComments = await Promise.all(commentsPromises);
-    const commentsMap = new Map(reportsData.map((r, index) => [r.id, allComments[index]]));
-
     // The author is the current user, so we can get their profile once
     const authorProfile = await this.getProfile(userId);
     const authorName = `${authorProfile?.first_name || ''} ${authorProfile?.last_name || ''}`.trim() || 'Usuario Anónimo';
 
-    return reportsData.map(reportData => {
-      const comments = commentsMap.get(reportData.id) || [];
+    return reportsData.map((reportData: any) => { // Usar 'any' temporalmente para el conteo
+      const commentCount = reportData.comment_count?.[0]?.count || 0; // Extraer el conteo
       return {
         id: reportData.id,
         title: reportData.title,
@@ -186,9 +179,10 @@ class ReportService {
         authorId: reportData.author_id,
         authorName: authorName,
         images: reportData.image_urls ? reportData.image_urls.map((path: string) => getPublicImageUrl(BUCKET_REPORT_IMAGES, path)) : [],
-        comments: comments,
+        comments: [], // No se cargan los comentarios completos aquí
         supportCount: reportData.support_count,
         supportedBy: reportData.supported_by || [],
+        commentCount: commentCount,
       };
     });
   }

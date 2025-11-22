@@ -118,7 +118,7 @@ const MyContributions: React.FC<MyContributionsProps> = ({ user }) => {
                                     <div className="flex items-center gap-4 text-xs text-slate-500">
                                         <span className="bg-slate-100 px-2 py-1 rounded">{report.barrio}</span>
                                         <span>{report.supportCount} apoyos</span>
-                                        <span>{report.comments.length} comentarios</span>
+                                        <span>{report.commentCount} comentarios</span>
                                     </div>
                                 </div>
                                 <div className="flex sm:flex-col gap-2 border-t sm:border-t-0 sm:border-l border-slate-100 pt-3 sm:pt-0 sm:pl-4 justify-center" onClick={(e) => e.stopPropagation()}>
@@ -165,7 +165,7 @@ const MyContributions: React.FC<MyContributionsProps> = ({ user }) => {
                                        {item.comment.content}
                                    </p>
                                    {item.comment.imageUrl && (
-                                       <div className="mt-2">
+                                       <div className="mt-3">
                                             <span className="text-xs text-blue-600 flex items-center gap-1"><ExternalLink size={10}/> Contiene imagen adjunta</span>
                                        </div>
                                    )}
