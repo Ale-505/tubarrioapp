@@ -43,8 +43,16 @@ const ReportDetail: React.FC = () => {
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim() || !report || !currentUser) {
-      showError('Debes iniciar sesión y escribir un comentario.');
+    if (!newComment.trim()) {
+      showError('El comentario no puede estar vacío.');
+      return;
+    }
+    if (!report) {
+      showError('No se pudo encontrar el reporte.');
+      return;
+    }
+    if (!currentUser) {
+      showError('Debes iniciar sesión para añadir un comentario.');
       return;
     }
     setSubmitting(true);
@@ -57,10 +65,12 @@ const ReportDetail: React.FC = () => {
         } : null);
         setNewComment('');
         setCommentFile(undefined);
+        showSuccess('Comentario añadido exitosamente.'); // Toast de éxito aquí
       }
-    } catch (err) {
-      console.error(err);
-      showError('Error al añadir el comentario.');
+      // Si addedComment es null, commentService.addComment ya habrá mostrado un showError.
+    } catch (err: any) {
+      console.error('Error inesperado al añadir comentario:', err);
+      showError(`Error inesperado: ${err.message || 'Fallo al añadir el comentario.'}`);
     } finally {
       setSubmitting(false);
     }

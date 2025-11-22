@@ -9,14 +9,11 @@ class CommentService {
    * @param reportId El ID del reporte al que se añade el comentario.
    * @param content El contenido del comentario.
    * @param file La imagen adjunta al comentario (opcional).
-   * @param currentUser El usuario actual.
+   * @param currentUser El usuario actual (se asume que ya está autenticado).
    * @returns El comentario creado o null si falla.
    */
-  async addComment(reportId: string, content: string, file?: File, currentUser?: User): Promise<Comment | null> {
-    if (!currentUser) {
-      showError('Debes iniciar sesión para comentar.');
-      return null;
-    }
+  async addComment(reportId: string, content: string, file?: File, currentUser: User): Promise<Comment | null> {
+    // La validación de currentUser se realiza en el componente que llama a esta función.
 
     let imageUrl: string | undefined;
     if (file) {
@@ -24,6 +21,7 @@ class CommentService {
       if (uploadedPath) {
         imageUrl = uploadedPath;
       } else {
+        // showError ya se llama dentro de uploadImage si falla.
         return null;
       }
     }
@@ -40,12 +38,12 @@ class CommentService {
       .single();
 
     if (error) {
-      console.error('Error adding comment:', error);
-      showError('Error al añadir el comentario.');
+      console.error('Error al añadir comentario en Supabase:', error.message, error.details, error.hint);
+      showError(`Error al añadir el comentario: ${error.message || 'Desconocido'}`);
       return null;
     }
 
-    showSuccess('Comentario añadido exitosamente.');
+    // El toast de éxito se manejará en el componente que llama a esta función.
     return {
       id: newComments.id,
       userId: newComments.author_id,
