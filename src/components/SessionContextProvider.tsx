@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/src/integrations/supabase/client';
-import { User as AppUser } from '../../types'; // Ruta corregida
+import { User as AppUser } from '../../types';
 import { getPublicImageUrl, BUCKET_AVATARS } from '@/src/services';
 import { showError } from '@/src/utils/toast';
 
@@ -61,13 +61,10 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
             const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
             let avatarUrl: string;
             if (profile.avatar_url && (profile.avatar_url.startsWith('http://') || profile.avatar_url.startsWith('https://'))) {
-              // Si avatar_url ya es una URL completa (como de ui-avatars.com), úsala directamente
               avatarUrl = profile.avatar_url;
             } else if (profile.avatar_url) {
-              // De lo contrario, asume que es una ruta dentro de nuestro bucket de Supabase Storage
               avatarUrl = getPublicImageUrl(BUCKET_AVATARS, profile.avatar_url);
             } else {
-              // Fallback a ui-avatars.com si no hay avatar_url presente
               avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || currentSession.user.email || 'Usuario')}&background=2563eb&color=fff`;
             }
             setAppUser({
@@ -77,7 +74,6 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
               avatar: avatarUrl
             });
           } else {
-             // Fallback if no profile found (shouldn't happen with trigger, but good for robustness)
              console.log('SessionContextProvider: No profile found, using fallback.');
              setAppUser({
               id: currentSession.user.id,
@@ -91,7 +87,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
           setAppUser(null);
         }
         console.log('SessionContextProvider: Finished processing auth state change. isLoading = false.');
-        setIsLoading(false); // Always set to false after processing an auth state change
+        setIsLoading(false);
       }
     );
 
@@ -99,12 +95,19 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
       console.log('SessionContextProvider: Cleaning up auth state listener.');
       authListener.subscription.unsubscribe();
     };
-  }, []); // Empty dependency array means this runs once on mount
+  }, []);
 
-  console.log('SessionContextProvider: Render. isLoading:', isLoading, 'appUser:', appUser);
+  // Memoize the context value to prevent unnecessary re-renders of consumers
+  const contextValue = useMemo(() => ({
+    session,
+    user: appUser,
+    supabaseUser,
+    isLoading,
+    setAppUser,
+  }), [session, appUser, supabaseUser, isLoading]);
 
   return (
-    <SessionContext.Provider value={{ session, user: appUser, supabaseUser, isLoading, setAppUser }}>
+    <SessionContext.Provider value={contextValue}>
       {children}
     </SessionContext.Provider>
   );
