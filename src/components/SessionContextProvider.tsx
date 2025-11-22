@@ -30,21 +30,25 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    console.log('SessionContextProvider: Setting up auth state listener');
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        console.log('SessionContextProvider: Auth state change event:', event);
+        console.log('SessionContextProvider: Current session:', currentSession);
+
         setSession(currentSession);
         setSupabaseUser(currentSession?.user || null);
 
         if (currentSession?.user) {
-          // Fetch profile data from public.profiles table
+          console.log('SessionContextProvider: User found, fetching profile...');
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('first_name, last_name, avatar_url')
             .eq('id', currentSession.user.id)
             .single();
 
-          if (profileError && profileError.code !== 'PGRST116') {
-            console.error('Error fetching profile:', profileError);
+          if (profileError && profileError.code !== 'PGRST116') { // PGRST116 means no rows found
+            console.error('SessionContextProvider: Error fetching profile:', profileError);
             showError(`Error al cargar el perfil de usuario: ${profileError.message}`);
             setAppUser({
               id: currentSession.user.id,
@@ -53,6 +57,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
               avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(currentSession.user.email || 'Usuario')}&background=2563eb&color=fff`
             });
           } else if (profile) {
+            console.log('SessionContextProvider: Profile fetched:', profile);
             const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
             const avatarUrl = profile.avatar_url ? getPublicImageUrl(BUCKET_AVATARS, profile.avatar_url) : `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName || currentSession.user.email || 'Usuario')}&background=2563eb&color=fff`;
             setAppUser({
@@ -63,6 +68,7 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
             });
           } else {
              // Fallback if no profile found (shouldn't happen with trigger, but good for robustness)
+             console.log('SessionContextProvider: No profile found, using fallback.');
              setAppUser({
               id: currentSession.user.id,
               email: currentSession.user.email || '',
@@ -71,16 +77,21 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
             });
           }
         } else {
+          console.log('SessionContextProvider: No user in session, clearing appUser.');
           setAppUser(null);
         }
+        console.log('SessionContextProvider: Finished processing auth state change. isLoading = false.');
         setIsLoading(false); // Always set to false after processing an auth state change
       }
     );
 
     return () => {
+      console.log('SessionContextProvider: Cleaning up auth state listener.');
       authListener.subscription.unsubscribe();
     };
   }, []); // Empty dependency array means this runs once on mount
+
+  console.log('SessionContextProvider: Render. isLoading:', isLoading, 'appUser:', appUser);
 
   return (
     <SessionContext.Provider value={{ session, user: appUser, supabaseUser, isLoading, setAppUser }}>
