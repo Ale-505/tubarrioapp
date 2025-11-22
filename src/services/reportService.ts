@@ -24,7 +24,7 @@ class ReportService {
   private async getReportComments(reportId: string): Promise<Comment[]> {
     const { data, error } = await supabase
       .from('comments')
-      .select('*, profiles(first_name, last_name, avatar_url)')
+      .select('*, profiles(*)') // Seleccionar todos los campos del perfil
       .eq('report_id', reportId)
       .order('created_at', { ascending: true });
 

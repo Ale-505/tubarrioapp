@@ -36,7 +36,7 @@ class CommentService {
         content: content,
         image_url: imageUrl,
       })
-      .select('*, profiles(first_name, last_name, avatar_url)')
+      .select('*, profiles(*)') // Seleccionar todos los campos del perfil
       .single();
 
     if (error) {
@@ -64,7 +64,7 @@ class CommentService {
   async getUserComments(userId: string): Promise<{ comment: Comment, reportTitle: string, reportId: string }[]> {
     const { data, error } = await supabase
       .from('comments')
-      .select('*, reports(id, title), profiles(first_name, last_name, avatar_url)')
+      .select('*, reports(id, title), profiles(*)') // Seleccionar todos los campos del perfil
       .eq('author_id', userId)
       .order('created_at', { ascending: false });
 
