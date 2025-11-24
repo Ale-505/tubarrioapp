@@ -51,13 +51,15 @@ const ReportDetail: React.FC = () => {
       showError('No se pudo encontrar el reporte.');
       return;
     }
-    if (!currentUser) {
+    // Validación más robusta para currentUser
+    if (!currentUser || !currentUser.id) {
       showError('Debes iniciar sesión para añadir un comentario.');
       return;
     }
     setSubmitting(true);
     try {
-      const addedComment = await commentService.addComment(report.id, newComment, commentFile, currentUser);
+      // ¡Orden de argumentos corregido aquí!
+      const addedComment = await commentService.addComment(report.id, newComment, currentUser, commentFile);
       if (addedComment) {
         setReport(prevReport => prevReport ? {
           ...prevReport,
